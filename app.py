@@ -4,7 +4,20 @@ import pandas as pd
 
 st.set_page_config(layout="wide")
 
-# ---------------- HEADER ----------------
+# ---------- FIRST LOAD DIALOG ----------
+if "instructions_shown" not in st.session_state:
+
+    st.session_state.instructions_shown = True
+
+    with st.dialog("How to use"):
+        st.markdown("""
+1. Download your **Detailed Attendance Report** from the SAP Portal.  
+2. Upload it here.  
+3. Check your **attendance percentage**.  
+4. Cross check your **cumulative attendance** with the **minimum required lectures listed below** according to the credit structure.
+        """)
+
+# ---------- HEADER ----------
 st.title("KPMSOL Attendance Calculator")
 st.markdown("---")
 st.caption("Created by Gaurav Khopkar")
@@ -18,7 +31,7 @@ st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
-# ---------------- ATTENDANCE TABLE ----------------
+# ---------- ATTENDANCE TABLE ----------
 if uploaded_file:
 
     rows = []
@@ -81,7 +94,7 @@ if uploaded_file:
         hide_index=True
     )
 
-# ---------------- CREDIT STRUCTURE ----------------
+# ---------- CREDIT STRUCTURE ----------
 st.markdown("### Credits")
 
 col1, col2, col3 = st.columns([2,3,2])
