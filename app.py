@@ -2,6 +2,8 @@ import streamlit as st
 import pdfplumber
 import pandas as pd
 
+st.set_page_config(layout="wide")
+
 st.title("Attendance Dashboard")
 
 uploaded_file = st.file_uploader("Upload Attendance PDF", type="pdf")
