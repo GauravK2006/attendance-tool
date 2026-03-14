@@ -38,15 +38,18 @@ uploaded_file = st.file_uploader("Upload File", type="pdf")
 # ---------- ATTENDANCE CALCULATION ----------
 if uploaded_file:
 
-    rows = []
+    with st.spinner("Processing attendance report..."):
 
-    with pdfplumber.open(uploaded_file) as pdf:
-        for page in pdf.pages:
-            table = page.extract_table()
+        rows = []
 
-            if table:
-                for row in table[1:]:
-                    rows.append(row)
+        with pdfplumber.open(uploaded_file) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+
+                if table:
+                    for row in table[1:]:
+                        rows.append(row)
+)
 
     df = pd.DataFrame(rows)
 
