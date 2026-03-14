@@ -2,12 +2,26 @@ import streamlit as st
 import pdfplumber
 import pandas as pd
 
+# Page layout
 st.set_page_config(layout="wide")
 
-st.title("Attendance Dashboard")
+# Title section
+st.markdown(
+    """
+    <h1 style='font-size:34px;'>KPMSOL Attendance Calculator</h1>
+    <hr>
+    <p style='font-size:14px;'>Created by Gaurav Khopkar</p>
+    """,
+    unsafe_allow_html=True
+)
 
-uploaded_file = st.file_uploader("Upload Attendance PDF", type="pdf")
+# Upload section
+st.markdown("### Upload your Detailed Attendance Report from SAP here")
+st.caption("From: 2nd Jan 2026 To: Yesterday")
 
+uploaded_file = st.file_uploader("Upload File", type="pdf")
+
+# Process PDF
 if uploaded_file:
 
     rows = []
@@ -26,36 +40,39 @@ if uploaded_file:
     df.columns = ["Subject","Date","Attendance"]
     df = df.dropna()
 
+    # Lecture counts
     conducted = df.groupby("Subject").size()
     attended = df[df["Attendance"]=="P"].groupby("Subject").size()
 
+    # Dates missed
     missed_dates = (
         df[df["Attendance"]=="A"]
         .groupby("Subject")["Date"]
         .apply(lambda x: ", ".join(x.astype(str)))
     )
 
+    # Load template for subject order
     result = pd.read_excel("template.xlsx")
 
-    # Fill lecture data
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-    # Remove T1/U1 suffix to combine subjects
+    # Combine T1 and U1 for calculations
     result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1) - Div. C","",regex=True)
 
     combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
     combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
-    # Create calculated columns
     result["Cumulative Attendance"] = combined_attended
-    result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
 
-    # Remove helper column
+    result["Attendance Percentage"] = (
+        combined_attended / combined_conducted * 100
+    ).round(2)
+
     result.drop(columns=["Base Subject"], inplace=True)
 
-    # Keep only desired columns (prevents duplicates)
+    # Keep only columns from template
     result = result[
         [
             "Sr. No.",
@@ -68,12 +85,14 @@ if uploaded_file:
         ]
     ]
 
-    st.subheader("Attendance Table")
+    # Calculated table
+    st.markdown("### Calculated Attendance")
 
     st.dataframe(
         result,
-        use_container_width=True,
+        use_container_width=False,
         hide_index=True,
+        height=350,
         column_config={
             "Dates Missed": st.column_config.TextColumn(
                 "Dates Missed",
@@ -81,3 +100,19 @@ if uploaded_file:
             )
         }
     )
+
+# Static credit structure table
+st.markdown("### Credit Structure")
+
+credit_data = {
+    "Credit": ["4 Credit", "3 Credit", "2 Credit"],
+    "Structure": [
+        "60 Lectures + 15 Tutorials",
+        "45 Lectures + 15 Tutorials",
+        "30 Lectures"
+    ]
+}
+
+credit_df = pd.DataFrame(credit_data)
+
+st.table(credit_df)
