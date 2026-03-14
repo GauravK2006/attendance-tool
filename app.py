@@ -26,41 +26,36 @@ if uploaded_file:
     df.columns = ["Subject","Date","Attendance"]
     df = df.dropna()
 
-    # Count lectures
     conducted = df.groupby("Subject").size()
     attended = df[df["Attendance"]=="P"].groupby("Subject").size()
 
-    # Dates missed
     missed_dates = (
         df[df["Attendance"]=="A"]
         .groupby("Subject")["Date"]
         .apply(lambda x: ", ".join(x.astype(str)))
     )
 
-    # Load template
     result = pd.read_excel("template.xlsx")
 
-    # Fill conducted and attended
+    # Remove old cumulative column from template
+    if "Cumulative Attendance" in result.columns:
+        result.drop(columns=["Cumulative Attendance"], inplace=True)
+
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
-
-    # Fill missed dates
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-    # Combine T1 + U1 subjects
     result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1) - Div. C","",regex=True)
 
     combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
     combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
-    # Fill calculated columns
     result["Cumulative Attendance"] = combined_attended
 
     result["Attendance Percentage"] = (
         combined_attended / combined_conducted * 100
     ).round(2)
 
-    # Remove helper column
     result.drop(columns=["Base Subject"], inplace=True)
 
     st.subheader("Attendance Table")
