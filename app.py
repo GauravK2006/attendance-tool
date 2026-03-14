@@ -10,7 +10,7 @@ st.markdown("""
 
 .main-container{
     background:#d9d9d9;
-    padding:40px;
+    
     border:2px solid #2c3e50;
 }
 
