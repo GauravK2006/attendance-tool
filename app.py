@@ -5,17 +5,24 @@ import pandas as pd
 st.set_page_config(layout="wide")
 
 # ---------- FIRST LOAD DIALOG ----------
-if "instructions_shown" not in st.session_state:
+if "show_instructions" not in st.session_state:
+    st.session_state.show_instructions = True
 
-    st.session_state.instructions_shown = True
+if st.session_state.show_instructions:
 
-    with st.dialog("How to use"):
-        st.markdown("""
+    with st.container():
+        st.info("""
+**How to use**
+
 1. Download your **Detailed Attendance Report** from the SAP Portal.  
 2. Upload it here.  
 3. Check your **attendance percentage**.  
-4. Cross check your **cumulative attendance** with the **minimum required lectures listed below** according to the credit structure.
-        """)
+4. Cross check your **cumulative attendance** with the minimum required lectures listed below according to the credit structure.
+""")
+
+        if st.button("Close"):
+            st.session_state.show_instructions = False
+
 
 # ---------- HEADER ----------
 st.title("KPMSOL Attendance Calculator")
