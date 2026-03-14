@@ -37,26 +37,36 @@ if uploaded_file:
 
     result = pd.read_excel("template.xlsx")
 
-    # Remove old cumulative column from template
-    if "Cumulative Attendance" in result.columns:
-        result.drop(columns=["Cumulative Attendance"], inplace=True)
-
+    # Fill lecture data
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
+    # Remove T1/U1 suffix to combine subjects
     result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1) - Div. C","",regex=True)
 
     combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
     combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
+    # Create calculated columns
     result["Cumulative Attendance"] = combined_attended
+    result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
 
-    result["Attendance Percentage"] = (
-        combined_attended / combined_conducted * 100
-    ).round(2)
-
+    # Remove helper column
     result.drop(columns=["Base Subject"], inplace=True)
+
+    # Keep only desired columns (prevents duplicates)
+    result = result[
+        [
+            "Sr. No.",
+            "Subject",
+            "Total Lectures Conducted",
+            "Total Lectures Attended",
+            "Cumulative Attendance",
+            "Attendance Percentage",
+            "Dates Missed"
+        ]
+    ]
 
     st.subheader("Attendance Table")
 
