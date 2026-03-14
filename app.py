@@ -85,7 +85,7 @@ if uploaded_file:
         how="left"
     )
 
-    result["Cumulative Attendance"] = result["Total Lectures Attended"]
+    result["Cumulative Attendance"] = result["Total Lectures Attended_x"]
 
     # Reorder columns
     result = result[[
