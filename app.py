@@ -4,52 +4,11 @@ import pandas as pd
 
 st.set_page_config(layout="wide")
 
-# ---------- PAGE STYLE ----------
-st.markdown("""
-<style>
+# ---------- HEADER ----------
+st.title("KPMSOL Attendance Calculator")
+st.markdown("---")
+st.caption("Created by Gaurav Khopkar")
 
-.main-container{
-    background:#d9d9d9;
-    
-    border:2px solid #2c3e50;
-}
-
-.table-box{
-    width:750px;
-}
-
-table{
-    border-collapse:collapse;
-    width:100%;
-}
-
-th,td{
-    border:1px solid #333;
-    padding:8px;
-}
-
-thead{
-    background:#d9d9d9;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ---------- MAIN CONTAINER ----------
-st.markdown("<div class='main-container'>", unsafe_allow_html=True)
-
-# Header
-st.markdown(
-"""
-<h1 style="font-size:28px;">KPMSOL Attendance Calculator</h1>
-<p style="font-size:13px;">Created by Gaurav Khopkar</p>
-""",
-unsafe_allow_html=True
-)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# Upload section
 st.markdown("### Upload your Detailed Attendance Report from SAP here")
 st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 
@@ -95,10 +54,7 @@ if uploaded_file:
     combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
     result["Cumulative Attendance"] = combined_attended
-
-    result["Attendance Percentage"] = (
-        combined_attended / combined_conducted * 100
-    ).round(2)
+    result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
 
     result.drop(columns=["Base Subject"], inplace=True)
 
@@ -114,38 +70,47 @@ if uploaded_file:
         ]
     ]
 
-    st.dataframe(result, width=750, height=200, hide_index=True)
+    st.dataframe(
+        result,
+        width=800,
+        height=220,
+        hide_index=True
+    )
 
 else:
 
-    # Empty placeholder table like the mockup
     placeholder = pd.DataFrame({
         "Column 1":["","","",""],
         "Column 2":["","","",""],
         "Column 3":["","","",""]
     })
 
-    st.dataframe(placeholder, width=750, height=200, hide_index=True)
+    st.dataframe(
+        placeholder,
+        width=800,
+        height=220,
+        hide_index=True
+    )
 
-# ---------- CREDIT STRUCTURE TABLE ----------
-st.markdown("<br><br>", unsafe_allow_html=True)
+# ---------- CREDIT STRUCTURE ----------
+st.markdown("### Credits")
 
-credit_data = {
-    "Credits":["4 Credit","3 Credit","2 Credit"],
-    "Total Lectures":[
-        "60 Lectures + 15 Tutorials",
-        "45 Lectures + 15 Tutorials",
-        "30 Lectures"
-    ],
-    "Lectures + Tutorials Required":[
-        "53",
-        "42",
-        "21"
-    ]
-}
+col1, col2, col3 = st.columns([2,3,2])
 
-credit_df = pd.DataFrame(credit_data)
+with col1:
+    st.markdown("**Credits**")
+    st.write("4 Credit")
+    st.write("3 Credit")
+    st.write("2 Credit")
 
-st.table(credit_df)
+with col2:
+    st.markdown("**Total Lectures**")
+    st.write("60 Lectures + 15 Tutorials")
+    st.write("45 Lectures + 15 Tutorials")
+    st.write("30 Lectures")
 
-st.markdown("</div>", unsafe_allow_html=True)
+with col3:
+    st.markdown("**Lectures + Tutorials Required**")
+    st.write("53")
+    st.write("42")
+    st.write("21")
