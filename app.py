@@ -10,7 +10,8 @@ st.markdown("---")
 st.caption("Created by Gaurav Khopkar")
 
 st.markdown(
-    "### Upload your Detailed Attendance Report from [SAP](https://sdc-sppap1.svkm.ac.in:50001/irj/portal) here"
+    '### Upload your Detailed Attendance Report from <a href="https://sdc-sppap1.svkm.ac.in:50001/irj/portal" target="_blank">SAP</a> here',
+    unsafe_allow_html=True
 )
 
 st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
@@ -75,21 +76,6 @@ if uploaded_file:
 
     st.dataframe(
         result,
-        use_container_width=True,
-        height=650,
-        hide_index=True
-    )
-
-else:
-
-    placeholder = pd.DataFrame({
-        "Column 1":["","","",""],
-        "Column 2":["","","",""],
-        "Column 3":["","","",""]
-    })
-
-    st.dataframe(
-        placeholder,
         use_container_width=True,
         height=650,
         hide_index=True
