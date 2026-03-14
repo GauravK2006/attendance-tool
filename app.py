@@ -49,7 +49,6 @@ if uploaded_file:
                 if table:
                     for row in table[1:]:
                         rows.append(row)
-)
 
     df = pd.DataFrame(rows)
 
