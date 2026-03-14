@@ -24,6 +24,7 @@ if uploaded_file:
     df.columns = ["Course Name","Attendance"]
     df = df.dropna()
 
+    # Count lectures
     total = df.groupby("Course Name").size()
     present = df[df["Attendance"]=="P"].groupby("Course Name").size()
 
@@ -35,29 +36,75 @@ if uploaded_file:
     summary.reset_index(inplace=True)
     summary.rename(columns={"Course Name":"Subject"}, inplace=True)
 
-    # Combine T1 + U1 rows
-    summary["Base Subject"] = summary["Subject"].str.replace(" T1 - Div. C","", regex=False)
-    summary["Base Subject"] = summary["Base Subject"].str.replace(" U1 - Div. C","", regex=False)
+    # Identify T1 and U1
+    summary["Type"] = summary["Subject"].str.extract(r'(T1|U1)')
+    summary["Base Subject"] = summary["Subject"].str.replace(r' (T1|U1) - Div. C','',regex=True)
 
-    grouped = summary.groupby("Base Subject").agg({
+    # Combined totals for percentage calculation
+    combined = summary.groupby("Base Subject").agg({
         "Total Lectures Conducted":"sum",
         "Total Lectures Attended":"sum"
     })
 
-    grouped["Cumulative Attendance"] = grouped["Total Lectures Attended"]
-
-    grouped["Attendance Percentage"] = (
-        grouped["Total Lectures Attended"] /
-        grouped["Total Lectures Conducted"]
+    combined["Attendance Percentage"] = (
+        combined["Total Lectures Attended"] /
+        combined["Total Lectures Conducted"]
     ) * 100
 
-    grouped["Attendance Percentage"] = grouped["Attendance Percentage"].round(2)
+    combined["Attendance Percentage"] = combined["Attendance Percentage"].round(2)
 
-    grouped["Current Absentism"] = (
-        grouped["Total Lectures Conducted"] -
-        grouped["Total Lectures Attended"]
+    combined["Current Absentism"] = (
+        combined["Total Lectures Conducted"] -
+        combined["Total Lectures Attended"]
     )
+
+    # Total lectures expected in course
+    TOTAL_COURSE_LECTURES = 60
+    TARGET_ATTENDANCE = 0.75
+
+    combined["Lectures Remaining"] = (
+        TOTAL_COURSE_LECTURES -
+        combined["Total Lectures Conducted"]
+    )
+
+    combined["Total Remaining"] = (
+        TOTAL_COURSE_LECTURES -
+        combined["Total Lectures Attended"]
+    )
+
+    combined["Lectures to be Attended"] = (
+        (TARGET_ATTENDANCE * TOTAL_COURSE_LECTURES) -
+        combined["Total Lectures Attended"]
+    ).clip(lower=0).round(0)
+
+    # Merge combined calculations back to T1/U1 rows
+    result = summary.merge(
+        combined,
+        left_on="Base Subject",
+        right_index=True,
+        how="left"
+    )
+
+    result["Cumulative Attendance"] = result["Total Lectures Attended"]
+
+    # Reorder columns
+    result = result[[
+        "Base Subject",
+        "Type",
+        "Total Lectures Conducted",
+        "Total Lectures Attended",
+        "Cumulative Attendance",
+        "Lectures Remaining",
+        "Total Remaining",
+        "Attendance Percentage",
+        "Current Absentism",
+        "Lectures to be Attended"
+    ]]
+
+    result.rename(columns={
+        "Base Subject":"Subject"
+    }, inplace=True)
 
     st.subheader("Attendance Table")
 
-    st.dataframe(grouped)
+    st.dataframe(result, use_container_width=True)
