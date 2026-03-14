@@ -4,7 +4,7 @@ import pandas as pd
 
 st.set_page_config(layout="wide")
 
-# ---------- HEADER ----------
+# ---------------- HEADER ----------------
 st.title("KPMSOL Attendance Calculator")
 st.markdown("---")
 st.caption("Created by Gaurav Khopkar")
@@ -14,7 +14,7 @@ st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
-# ---------- CALCULATED TABLE ----------
+# ---------------- ATTENDANCE TABLE ----------------
 if uploaded_file:
 
     rows = []
@@ -72,8 +72,8 @@ if uploaded_file:
 
     st.dataframe(
         result,
-        width=800,
-        height=220,
+        use_container_width=True,
+        height=650,
         hide_index=True
     )
 
@@ -87,12 +87,12 @@ else:
 
     st.dataframe(
         placeholder,
-        width=800,
-        height=220,
+        use_container_width=True,
+        height=650,
         hide_index=True
     )
 
-# ---------- CREDIT STRUCTURE ----------
+# ---------------- CREDIT STRUCTURE ----------------
 st.markdown("### Credits")
 
 col1, col2, col3 = st.columns([2,3,2])
