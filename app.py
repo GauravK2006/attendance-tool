@@ -75,4 +75,14 @@ if uploaded_file:
 
     st.subheader("Attendance Table")
 
-    st.dataframe(result, use_container_width=True)
+    st.dataframe(
+    result,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "Dates Missed": st.column_config.TextColumn(
+            "Dates Missed",
+            width="large"
+        )
+    }
+)
