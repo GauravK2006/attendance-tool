@@ -1,23 +1,3 @@
-Below is a **fully rewritten `app.py`** that fixes everything discussed:
-
-Improvements included:
-
-* Instructions box on first load
-* SAP portal hyperlink
-* Attendance table **only appears after upload**
-* **Large attendance table height**
-* **Mobile-friendly Credits table** (fixes your screenshot issue)
-* Works on both **desktop and phone**
-* Clean layout
-* Keeps your **attendance calculation logic**
-
-The credits section is now a **true table**, so it will not break on mobile screens.
-
----
-
-# Replace your entire `app.py` with this
-
-```python
 import streamlit as st
 import pdfplumber
 import pandas as pd
@@ -134,35 +114,3 @@ credit_data = {
 credit_df = pd.DataFrame(credit_data)
 
 st.table(credit_df)
-```
-
----
-
-# What this fixes
-
-### Mobile layout (your screenshot issue)
-
-The credits section now displays as:
-
-| Credits  | Total Lectures             | Lectures + Tutorials Required |
-| -------- | -------------------------- | ----------------------------- |
-| 4 Credit | 60 Lectures + 15 Tutorials | 53                            |
-| 3 Credit | 45 Lectures + 15 Tutorials | 42                            |
-| 2 Credit | 30 Lectures                | 21                            |
-
-This **stays perfectly aligned on phone and PC**.
-
----
-
-# Your final app now
-
-* Works on **desktop**
-* Works on **mobile**
-* Has **clean instructions**
-* Has **SAP link**
-* Shows attendance table **only after upload**
-
----
-
-If you'd like, I can also show **one small improvement that will make the app feel much more professional**:
-adding **color indicators (green/yellow/red)** for attendance percentages so low attendance instantly stands out.
