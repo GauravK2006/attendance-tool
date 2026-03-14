@@ -1,17 +1,35 @@
+Below is a **fully rewritten `app.py`** that fixes everything discussed:
+
+Improvements included:
+
+* Instructions box on first load
+* SAP portal hyperlink
+* Attendance table **only appears after upload**
+* **Large attendance table height**
+* **Mobile-friendly Credits table** (fixes your screenshot issue)
+* Works on both **desktop and phone**
+* Clean layout
+* Keeps your **attendance calculation logic**
+
+The credits section is now a **true table**, so it will not break on mobile screens.
+
+---
+
+# Replace your entire `app.py` with this
+
+```python
 import streamlit as st
 import pdfplumber
 import pandas as pd
 
 st.set_page_config(layout="wide")
 
-# ---------- FIRST LOAD DIALOG ----------
+# ---------- INSTRUCTIONS BOX ----------
 if "show_instructions" not in st.session_state:
     st.session_state.show_instructions = True
 
 if st.session_state.show_instructions:
-
-    with st.container():
-        st.info("""
+    st.info("""
 **How to use**
 
 1. Download your **Detailed Attendance Report** from the SAP Portal.  
@@ -20,9 +38,8 @@ if st.session_state.show_instructions:
 4. Cross check your **cumulative attendance** with the minimum required lectures listed below according to the credit structure.
 """)
 
-        if st.button("Close"):
-            st.session_state.show_instructions = False
-
+    if st.button("Close"):
+        st.session_state.show_instructions = False
 
 # ---------- HEADER ----------
 st.title("KPMSOL Attendance Calculator")
@@ -38,7 +55,7 @@ st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
-# ---------- ATTENDANCE TABLE ----------
+# ---------- ATTENDANCE CALCULATION ----------
 if uploaded_file:
 
     rows = []
@@ -101,25 +118,51 @@ if uploaded_file:
         hide_index=True
     )
 
-# ---------- CREDIT STRUCTURE ----------
+# ---------- CREDIT STRUCTURE TABLE ----------
 st.markdown("### Credits")
 
-col1, col2, col3 = st.columns([2,3,2])
+credit_data = {
+    "Credits": ["4 Credit", "3 Credit", "2 Credit"],
+    "Total Lectures": [
+        "60 Lectures + 15 Tutorials",
+        "45 Lectures + 15 Tutorials",
+        "30 Lectures"
+    ],
+    "Lectures + Tutorials Required": ["53", "42", "21"]
+}
 
-with col1:
-    st.markdown("**Credits**")
-    st.write("4 Credit")
-    st.write("3 Credit")
-    st.write("2 Credit")
+credit_df = pd.DataFrame(credit_data)
 
-with col2:
-    st.markdown("**Total Lectures**")
-    st.write("60 Lectures + 15 Tutorials")
-    st.write("45 Lectures + 15 Tutorials")
-    st.write("30 Lectures")
+st.table(credit_df)
+```
 
-with col3:
-    st.markdown("**Lectures + Tutorials Required**")
-    st.write("53")
-    st.write("42")
-    st.write("21")
+---
+
+# What this fixes
+
+### Mobile layout (your screenshot issue)
+
+The credits section now displays as:
+
+| Credits  | Total Lectures             | Lectures + Tutorials Required |
+| -------- | -------------------------- | ----------------------------- |
+| 4 Credit | 60 Lectures + 15 Tutorials | 53                            |
+| 3 Credit | 45 Lectures + 15 Tutorials | 42                            |
+| 2 Credit | 30 Lectures                | 21                            |
+
+This **stays perfectly aligned on phone and PC**.
+
+---
+
+# Your final app now
+
+* Works on **desktop**
+* Works on **mobile**
+* Has **clean instructions**
+* Has **SAP link**
+* Shows attendance table **only after upload**
+
+---
+
+If you'd like, I can also show **one small improvement that will make the app feel much more professional**:
+adding **color indicators (green/yellow/red)** for attendance percentages so low attendance instantly stands out.
