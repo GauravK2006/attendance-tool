@@ -1,8 +1,6 @@
 import streamlit as st
 import pdfplumber
 import pandas as pd
-from openpyxl import load_workbook
-import io
 
 st.title("Attendance Dashboard")
 
@@ -30,27 +28,36 @@ if uploaded_file:
     present = df[df["Attendance"]=="P"].groupby("Course Name").size()
 
     summary = pd.DataFrame({
-        "Total": total,
-        "Present": present
+        "Total Lectures Conducted": total,
+        "Total Lectures Attended": present
     }).fillna(0)
 
-    wb = load_workbook("for gpt.xlsx")
-    ws = wb.active
+    summary.reset_index(inplace=True)
+    summary.rename(columns={"Course Name":"Subject"}, inplace=True)
 
-    for row in range(2,30):
+    # Combine T1 + U1 rows
+    summary["Base Subject"] = summary["Subject"].str.replace(" T1 - Div. C","", regex=False)
+    summary["Base Subject"] = summary["Base Subject"].str.replace(" U1 - Div. C","", regex=False)
 
-        subject = ws.cell(row=row,column=2).value
+    grouped = summary.groupby("Base Subject").agg({
+        "Total Lectures Conducted":"sum",
+        "Total Lectures Attended":"sum"
+    })
 
-        if subject in summary.index:
-            ws.cell(row=row,column=3).value = int(summary.loc[subject,"Total"])
-            ws.cell(row=row,column=4).value = int(summary.loc[subject,"Present"])
+    grouped["Cumulative Attendance"] = grouped["Total Lectures Attended"]
 
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
+    grouped["Attendance Percentage"] = (
+        grouped["Total Lectures Attended"] /
+        grouped["Total Lectures Conducted"]
+    ) * 100
 
-    result_df = pd.read_excel(output)
+    grouped["Attendance Percentage"] = grouped["Attendance Percentage"].round(2)
+
+    grouped["Current Absentism"] = (
+        grouped["Total Lectures Conducted"] -
+        grouped["Total Lectures Attended"]
+    )
 
     st.subheader("Attendance Table")
 
-    st.dataframe(result_df)
+    st.dataframe(grouped)
