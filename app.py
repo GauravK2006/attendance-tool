@@ -7,32 +7,49 @@ st.set_page_config(layout="wide")
 # ---------- PAGE STYLE ----------
 st.markdown("""
 <style>
-body {
-    background-color:#000;
+
+.main-container{
+    background:#d9d9d9;
+    padding:40px;
+    border:2px solid #2c3e50;
 }
-table {
-    border-collapse: collapse;
+
+.table-box{
+    width:750px;
 }
-thead tr th {
-    background-color:#111 !important;
+
+table{
+    border-collapse:collapse;
+    width:100%;
 }
-tbody tr:nth-child(odd) {
-    background-color:#bdbdbd;
+
+th,td{
+    border:1px solid #333;
+    padding:8px;
 }
-tbody tr:nth-child(even) {
-    background-color:#d0d0d0;
+
+thead{
+    background:#d9d9d9;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- HEADER ----------
-st.markdown("""
-<h1 style="font-size:32px;">KPMSOL Attendance Calculator</h1>
-<hr>
-<p style="font-size:14px;">Created by Gaurav Khopkar</p>
-""", unsafe_allow_html=True)
+# ---------- MAIN CONTAINER ----------
+st.markdown("<div class='main-container'>", unsafe_allow_html=True)
 
-# ---------- UPLOAD SECTION ----------
+# Header
+st.markdown(
+"""
+<h1 style="font-size:28px;">KPMSOL Attendance Calculator</h1>
+<p style="font-size:13px;">Created by Gaurav Khopkar</p>
+""",
+unsafe_allow_html=True
+)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Upload section
 st.markdown("### Upload your Detailed Attendance Report from SAP here")
 st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 
@@ -97,26 +114,38 @@ if uploaded_file:
         ]
     ]
 
-    st.dataframe(
-        result,
-        use_container_width=False,
-        hide_index=True,
-        height=250
-    )
+    st.dataframe(result, width=750, height=200, hide_index=True)
 
-# ---------- FIXED CREDIT TABLE ----------
-st.markdown("<br>", unsafe_allow_html=True)
+else:
+
+    # Empty placeholder table like the mockup
+    placeholder = pd.DataFrame({
+        "Column 1":["","","",""],
+        "Column 2":["","","",""],
+        "Column 3":["","","",""]
+    })
+
+    st.dataframe(placeholder, width=750, height=200, hide_index=True)
+
+# ---------- CREDIT STRUCTURE TABLE ----------
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 credit_data = {
-    "Credits": ["4 Credit", "3 Credit", "2 Credit"],
-    "Total Lectures": [
+    "Credits":["4 Credit","3 Credit","2 Credit"],
+    "Total Lectures":[
         "60 Lectures + 15 Tutorials",
         "45 Lectures + 15 Tutorials",
         "30 Lectures"
     ],
-    "Lectures + Tutorials Required": ["53", "42", "21"]
+    "Lectures + Tutorials Required":[
+        "53",
+        "42",
+        "21"
+    ]
 }
 
 credit_df = pd.DataFrame(credit_data)
 
 st.table(credit_df)
+
+st.markdown("</div>", unsafe_allow_html=True)
