@@ -9,7 +9,10 @@ st.title("KPMSOL Attendance Calculator")
 st.markdown("---")
 st.caption("Created by Gaurav Khopkar")
 
-st.markdown("### Upload your Detailed Attendance Report from SAP here")
+st.markdown(
+    "### Upload your Detailed Attendance Report from [SAP](https://sdc-sppap1.svkm.ac.in:50001/irj/portal) here"
+)
+
 st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 
 uploaded_file = st.file_uploader("Upload File", type="pdf")
