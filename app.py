@@ -4,7 +4,7 @@ import pandas as pd
 from openpyxl import load_workbook
 import io
 
-st.title("Attendance Sheet Generator")
+st.title("Attendance Dashboard")
 
 uploaded_file = st.file_uploader("Upload Attendance PDF", type="pdf")
 
@@ -49,8 +49,8 @@ if uploaded_file:
     wb.save(output)
     output.seek(0)
 
-    st.download_button(
-        label="Download Attendance Sheet",
-        data=output,
-        file_name="attendance_output.xlsx"
-    )
+    result_df = pd.read_excel(output)
+
+    st.subheader("Attendance Table")
+
+    st.dataframe(result_df)
