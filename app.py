@@ -24,17 +24,14 @@ if uploaded_file:
 
     df = df[[1,2,5]]
     df.columns = ["Subject","Date","Attendance"]
-
     df = df.dropna()
 
-    # Count conducted lectures
+    # Count lectures
     conducted = df.groupby("Subject").size()
-
-    # Count attended lectures
     attended = df[df["Attendance"]=="P"].groupby("Subject").size()
 
-    # Collect dates missed
-    missed = (
+    # Collect missed dates
+    missed_dates = (
         df[df["Attendance"]=="A"]
         .groupby("Subject")["Date"]
         .apply(lambda x: ", ".join(x.astype(str)))
@@ -45,44 +42,48 @@ if uploaded_file:
 
     result = template.copy()
 
-    # Fill values according to template order
+    # Map conducted and attended
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
-    result["Dates Missed"] = result["Subject"].map(missed).fillna("")
 
-    # Calculate cumulative attendance (T1 + U1)
-    base_subject = result["Subject"].str.replace(r" (T1|U1) - Div. C","",regex=True)
+    # Map missed dates
+    result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-    combined_conducted = result.groupby(base_subject)["Total Lectures Conducted"].transform("sum")
-    combined_attended = result.groupby(base_subject)["Total Lectures Attended"].transform("sum")
+    # Remove T1/U1 to combine subjects
+    result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1) - Div. C","",regex=True)
 
-    result["Cumulative Attendance "] = combined_attended
+    combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
+    combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
-    # Attendance %
+    # Excel-equivalent calculations
+    TOTAL_COURSE_LECTURES = 60
+    TARGET_ATTENDANCE = 0.75
+
+    result["Cumulative Attendance"] = combined_attended
+
     result["Attendance Percentage"] = (
         combined_attended / combined_conducted * 100
     ).round(2)
 
-    # Course constants (edit if needed)
-    TOTAL_COURSE_LECTURES = 60
-    TARGET = 0.75
-
     result["Lectures Remaining"] = TOTAL_COURSE_LECTURES - combined_conducted
 
-    result["Lectures to be Atended"] = (
-        TARGET * TOTAL_COURSE_LECTURES - combined_attended
+    result["Lectures to be Attended"] = (
+        TARGET_ATTENDANCE * TOTAL_COURSE_LECTURES - combined_attended
     ).clip(lower=0).round(0)
+
+    # Remove helper column
+    result.drop(columns=["Base Subject"], inplace=True)
 
     st.subheader("Attendance Table")
 
     st.dataframe(
-    result,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Dates Missed": st.column_config.TextColumn(
-            "Dates Missed",
-            width="large"
-        )
-    }
-)
+        result,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Dates Missed": st.column_config.TextColumn(
+                "Dates Missed",
+                width="large"
+            )
+        }
+    )
