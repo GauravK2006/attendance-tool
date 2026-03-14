@@ -20,83 +20,56 @@ if uploaded_file:
 
     df = pd.DataFrame(rows)
 
-    df = df[[1,5]]
-    df.columns = ["Course Name","Attendance"]
+    df = df[[1,2,5]]
+    df.columns = ["Subject","Date","Attendance"]
+
     df = df.dropna()
 
-    # Count lectures conducted and attended
-    conducted = df.groupby("Course Name").size()
-    attended = df[df["Attendance"]=="P"].groupby("Course Name").size()
+    # Count conducted lectures
+    conducted = df.groupby("Subject").size()
 
-    summary = pd.DataFrame({
-        "Subject Full": conducted.index,
-        "Total Lectures Conducted": conducted.values,
-        "Total Lectures Attended": attended.reindex(conducted.index, fill_value=0).values
-    })
+    # Count attended lectures
+    attended = df[df["Attendance"]=="P"].groupby("Subject").size()
 
-    # Identify T1 / U1
-    summary["Type"] = summary["Subject Full"].str.extract(r"(T1|U1)")
-    summary["Subject"] = summary["Subject Full"].str.replace(r" (T1|U1) - Div. C","",regex=True)
+    # Collect dates missed
+    missed = (
+        df[df["Attendance"]=="A"]
+        .groupby("Subject")["Date"]
+        .apply(lambda x: ", ".join(x.astype(str)))
+    )
 
-    # Combined totals (T1 + U1)
-    combined = summary.groupby("Subject").agg({
-        "Total Lectures Conducted":"sum",
-        "Total Lectures Attended":"sum"
-    })
+    # Load template
+    template = pd.read_excel("template.xlsx")
 
-    # Course constants (change if needed)
+    result = template.copy()
+
+    # Fill values according to template order
+    result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
+    result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
+    result["Dates Missed"] = result["Subject"].map(missed).fillna("")
+
+    # Calculate cumulative attendance (T1 + U1)
+    base_subject = result["Subject"].str.replace(r" (T1|U1) - Div. C","",regex=True)
+
+    combined_conducted = result.groupby(base_subject)["Total Lectures Conducted"].transform("sum")
+    combined_attended = result.groupby(base_subject)["Total Lectures Attended"].transform("sum")
+
+    result["Cumulative Attendance "] = combined_attended
+
+    # Attendance %
+    result["Attendance Percentage"] = (
+        combined_attended / combined_conducted * 100
+    ).round(2)
+
+    # Course constants (edit if needed)
     TOTAL_COURSE_LECTURES = 60
-    TARGET_PERCENT = 0.75
+    TARGET = 0.75
 
-    combined["Attendance Percentage"] = (
-        combined["Total Lectures Attended"] /
-        combined["Total Lectures Conducted"]
-    ) * 100
+    result["Lectures Remaining"] = TOTAL_COURSE_LECTURES - combined_conducted
 
-    combined["Attendance Percentage"] = combined["Attendance Percentage"].round(2)
-
-    combined["Current Absentism"] = (
-        combined["Total Lectures Conducted"] -
-        combined["Total Lectures Attended"]
-    )
-
-    combined["Lectures Remaining"] = (
-        TOTAL_COURSE_LECTURES -
-        combined["Total Lectures Conducted"]
-    )
-
-    combined["Total Remaining"] = (
-        TOTAL_COURSE_LECTURES -
-        combined["Total Lectures Attended"]
-    )
-
-    combined["Lectures to be Attended"] = (
-        TARGET_PERCENT * TOTAL_COURSE_LECTURES -
-        combined["Total Lectures Attended"]
+    result["Lectures to be Atended"] = (
+        TARGET * TOTAL_COURSE_LECTURES - combined_attended
     ).clip(lower=0).round(0)
-
-    # Map combined calculations back to each T1/U1 row
-    summary["Attendance Percentage"] = summary["Subject"].map(combined["Attendance Percentage"])
-    summary["Current Absentism"] = summary["Subject"].map(combined["Current Absentism"])
-    summary["Lectures Remaining"] = summary["Subject"].map(combined["Lectures Remaining"])
-    summary["Total Remaining"] = summary["Subject"].map(combined["Total Remaining"])
-    summary["Lectures to be Attended"] = summary["Subject"].map(combined["Lectures to be Attended"])
-
-    summary["Cumulative Attendance"] = summary["Total Lectures Attended"]
-
-    # Final column order
-    result = summary[[
-        "Subject",
-        "Type",
-        "Total Lectures Conducted",
-        "Total Lectures Attended",
-        "Cumulative Attendance",
-        "Lectures Remaining",
-        "Total Remaining",
-        "Attendance Percentage",
-        "Current Absentism",
-        "Lectures to be Attended"
-    ]]
 
     st.subheader("Attendance Table")
 
