@@ -129,10 +129,11 @@ if uploaded_file:
 st.markdown("### Credits")
 
 credit_data = {
-    "Credits": ["4 Credit", "3 Credit", "2 Credit"],
+    "Credits": ["4 Credit", "3 Credit", "2 Credit", "Non-Credit"],
     "Total Lectures": [
         "60 Lectures + 15 Tutorials",
         "45 Lectures + 15 Tutorials",
+        "30 Lectures",
         "30 Lectures"
     ],
     "Lectures + Tutorials Required": ["53", "42", "21"]
