@@ -56,20 +56,16 @@ def normalize_subject(text):
 
 
 # ---------- SUBJECT MATCH ----------
-matched_subjects = set()
-
 def match_required(subject):
 
     subject_clean = normalize_subject(subject)
 
     if subject_clean in credit_map:
-        matched_subjects.add(subject_clean)
         return credit_map[subject_clean]
 
     match = get_close_matches(subject_clean, credit_map.keys(), n=1, cutoff=0.45)
 
     if match:
-        matched_subjects.add(match[0])
         return credit_map[match[0]]
 
     return None
@@ -113,7 +109,6 @@ if uploaded_file:
             if "Name" in line:
 
                 student_name = line.strip()
-
                 break
 
 
@@ -125,7 +120,6 @@ if uploaded_file:
             if "Attendance Report Duration" in line:
 
                 report_duration = line.strip()
-
                 break
 
 
@@ -300,6 +294,14 @@ if uploaded_file:
     ]
 
 
+    # ---------- RELEVANT CREDIT STRUCTURE FIX ----------
+    base_subjects = result["Subject"].apply(normalize_subject).unique()
+
+    relevant_credit_rows = credit_df[
+        credit_df["Subject"].isin(base_subjects)
+    ]
+
+
     # ---------- PDF GENERATION ----------
     st.markdown("### Download Report")
 
@@ -402,12 +404,43 @@ if uploaded_file:
 
     elements.append(attendance_table)
 
+    elements.append(Spacer(1, 30))
+
+
+    # ---------- CREDIT STRUCTURE TABLE ----------
+    credit_headers = [
+        Paragraph(f"<b>{c}</b>", header_style)
+        for c in relevant_credit_rows.columns
+    ]
+
+    credit_data = [credit_headers]
+
+    for _, row in relevant_credit_rows.iterrows():
+
+        credit_data.append(
+            [Paragraph(str(v), wrap_style) for v in row]
+        )
+
+
+    credit_table = Table(
+        credit_data,
+        repeatRows=1
+    )
+
+    credit_table.setStyle(
+        TableStyle([
+            ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+            ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
+        ])
+    )
+
+    elements.append(credit_table)
+
 
     pdf = SimpleDocTemplate(
         pdf_buffer,
         pagesize=landscape(letter)
     )
-
 
     pdf.build(elements)
 
