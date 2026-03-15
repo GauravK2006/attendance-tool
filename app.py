@@ -1,8 +1,6 @@
 import streamlit as st
 import pdfplumber
 import pandas as pd
-import requests
-import uuid
 
 st.set_page_config(
     page_title="KPMSOL Attendance Calculator",
@@ -58,13 +56,29 @@ if uploaded_file:
                     for row in table[1:]:
                         rows.append(row)
 
+        # ---------- VALIDATION ----------
+        if len(rows) == 0:
+            st.error("Invalid file. Please upload the Detailed Attendance Report from SAP.")
+            st.stop()
+
         df = pd.DataFrame(rows)
 
-        df = df[[1,2,5]]
+        try:
+            df = df[[1,2,5]]
+        except:
+            st.error("Invalid file. Please upload the Detailed Attendance Report from SAP.")
+            st.stop()
+
         df.columns = ["Subject","Date","Attendance"]
         df = df.dropna()
 
-        # -------- SUBJECT LIST --------
+        # ---------- LAST UPDATED DATE ----------
+        try:
+            latest_date = pd.to_datetime(df["Date"]).max().strftime("%d %B %Y")
+        except:
+            latest_date = df["Date"].max()
+
+        # ---------- SUBJECT LIST ----------
         subjects = df["Subject"].unique()
 
         result = pd.DataFrame({
@@ -125,6 +139,8 @@ if uploaded_file:
         height=650,
         hide_index=True
     )
+
+    st.caption(f"Report generated from data up to: {latest_date}")
 
 
 # ---------- CREDIT STRUCTURE ----------
