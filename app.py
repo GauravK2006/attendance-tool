@@ -89,6 +89,20 @@ if uploaded_file:
 
         df.columns = ["Subject","Date","Attendance"]
         df = df.dropna()
+        # ---------- NOT UPDATED LECTURES ----------
+nu_rows = df[df["Attendance"] == "NU"]
+
+if not nu_rows.empty:
+
+    nu_count = len(nu_rows)
+
+    try:
+        nu_date = pd.to_datetime(nu_rows["Date"]).max().strftime("%d %B")
+    except:
+        nu_date = nu_rows["Date"].iloc[0]
+
+    st.warning(f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU).")
+
 
         # ---------- LAST UPDATED DATE ----------
         try:
