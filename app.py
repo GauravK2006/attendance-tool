@@ -162,7 +162,9 @@ col1, col2 = st.columns([1,1])
 pdf_buffer = io.BytesIO()
 styles = getSampleStyleSheet()
 
-headers = [Paragraph(f"<b>{col}</b>", styles["Normal"]) for col in result.columns]
+headers = []
+for col in result.columns:
+    headers.append(Paragraph("<b>{}</b>".format(col), styles["Normal"]))
 
 table_data = [headers]
 
