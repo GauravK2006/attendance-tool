@@ -4,7 +4,6 @@ import pandas as pd
 import io
 import re
 from difflib import get_close_matches
-from datetime import datetime
 
 from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer, TableStyle
 from reportlab.lib.pagesizes import landscape, letter
@@ -100,9 +99,6 @@ uploaded_file = st.file_uploader("Upload File", type="pdf")
 # ---------- PROCESS FILE ----------
 if uploaded_file:
 
-    # timestamp captured at time of generation
-    report_timestamp = datetime.now().strftime("%d %B %Y | %H:%M")
-
     rows = []
 
     with pdfplumber.open(uploaded_file) as pdf:
@@ -117,17 +113,19 @@ if uploaded_file:
             if "Name" in line:
 
                 student_name = line.strip()
+
                 break
 
 
-        # ---------- EXTRACT FROM/TO EXACTLY ----------
-        date_range_line = ""
+        # ---------- REPORT DURATION ----------
+        report_duration = ""
 
         for line in first_page_text.split("\n"):
 
-            if "From" in line and "To" in line:
+            if "Attendance Report Duration" in line:
 
-                date_range_line = line.strip()
+                report_duration = line.strip()
+
                 break
 
 
@@ -337,18 +335,14 @@ if uploaded_file:
 
     elements.append(Spacer(1, 5))
 
-    if date_range_line:
+    if report_duration:
+
         elements.append(
-            Paragraph(date_range_line, styles["Normal"])
+            Paragraph(report_duration, styles["Normal"])
         )
 
-    elements.append(Spacer(1, 5))
+        elements.append(Spacer(1, 10))
 
-    elements.append(
-        Paragraph(f"Generated: {report_timestamp}", styles["Normal"])
-    )
-
-    elements.append(Spacer(1, 10))
 
     if nu_message:
 
