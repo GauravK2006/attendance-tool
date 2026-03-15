@@ -1,6 +1,9 @@
 import streamlit as st
 import pdfplumber
 import pandas as pd
+import io
+from reportlab.platypus import SimpleDocTemplate, Table
+from reportlab.lib.pagesizes import letter
 
 st.set_page_config(
     page_title="KPMSOL Attendance Calculator",
@@ -28,7 +31,7 @@ if st.session_state.show_instructions:
 
 # ---------- HEADER ----------
 st.markdown("""
-<h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator <h6>(Unofficial)</h6></h1>
+<h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
 <hr style="margin-top:0px; margin-bottom:10px;">
 """, unsafe_allow_html=True)
 
@@ -59,7 +62,6 @@ if uploaded_file:
                     for row in table[1:]:
                         rows.append(row)
 
-        # ---------- VALIDATION ----------
         if len(rows) == 0:
             st.error("Invalid file. Please upload the Detailed Attendance Report from SAP.")
             st.stop()
@@ -105,13 +107,9 @@ if uploaded_file:
             "Subject": subjects
         })
 
-        # lectures conducted
         conducted = df_calc.groupby("Subject").size()
-
-        # lectures attended
         attended = df_calc[df_calc["Attendance"]=="P"].groupby("Subject").size()
 
-        # missed dates (only A)
         missed_dates = (
             df_calc[df_calc["Attendance"]=="A"]
             .groupby("Subject")["Date"]
@@ -128,17 +126,14 @@ if uploaded_file:
 
         result = result.sort_values(by=["Base Subject","Type"])
 
-        # cumulative calculations
         combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
         combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
         result["Cumulative Attendance"] = combined_attended
         result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
 
-        # cleanup
         result.drop(columns=["Base Subject","Type"], inplace=True)
 
-        # serial numbers
         result.insert(0, "Sr. No.", range(1, len(result)+1))
 
         result = result[
@@ -153,6 +148,7 @@ if uploaded_file:
             ]
         ]
 
+    # ---------- DISPLAY TABLE ----------
     st.dataframe(
         result,
         use_container_width=True,
@@ -161,6 +157,46 @@ if uploaded_file:
     )
 
     st.caption(f"Report generated from data up to: {latest_date}")
+
+
+    # ---------- DOWNLOAD OPTIONS ----------
+    st.markdown("### Download Report")
+
+    col1, col2 = st.columns(2)
+
+    # Excel
+    excel_buffer = io.BytesIO()
+
+    with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
+        result.to_excel(writer, index=False, sheet_name="Attendance")
+
+    excel_buffer.seek(0)
+
+    col1.download_button(
+        label="Download as Excel (.xlsx)",
+        data=excel_buffer,
+        file_name="attendance_report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    # PDF
+    pdf_buffer = io.BytesIO()
+
+    table_data = [result.columns.tolist()] + result.values.tolist()
+
+    pdf = SimpleDocTemplate(pdf_buffer, pagesize=letter)
+    table = Table(table_data)
+
+    pdf.build([table])
+
+    pdf_buffer.seek(0)
+
+    col2.download_button(
+        label="Download as PDF (.pdf)",
+        data=pdf_buffer,
+        file_name="attendance_report.pdf",
+        mime="application/pdf"
+    )
 
 
 # ---------- CREDIT STRUCTURE ----------
@@ -181,13 +217,15 @@ credit_df = pd.DataFrame(credit_data)
 
 st.dataframe(credit_df, hide_index=True, use_container_width=True)
 
+
+# ---------- FOOTER ----------
 st.markdown("---")
 
 st.markdown(
 """
 <p style="font-size:0.85rem; color:gray;">
-
-This page is an independent student-created tool developed by <b>Gaurav Khopkar</b> for convenience in estimating attendance from the SAP Detailed Attendance Report. It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal, and the official records on SAP shall prevail in case of any discrepancy.
+This page is an independent student-created tool developed by <b>Gaurav Khopkar</b> for convenience in estimating attendance from the SAP Detailed Attendance Report. 
+It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal, and the official records on SAP shall prevail in case of any discrepancy.
 
 <br>
 
@@ -196,7 +234,7 @@ For any defects, queries, or suggestions, contact: <b>gauravkhopkar2006@hotmail.
 <br>
 
 Thank you for using this tool.
+</p>
 """,
 unsafe_allow_html=True
 )
-
