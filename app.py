@@ -136,7 +136,7 @@ credit_data = {
         "30 Lectures",
         "30 Lectures"
     ],
-    "Lectures + Tutorials Required": ["53", "42", "21"]
+    "Lectures + Tutorials Required": ["53", "42", "21", "21"]
 }
 
 credit_df = pd.DataFrame(credit_data)
