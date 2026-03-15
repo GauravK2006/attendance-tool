@@ -7,18 +7,6 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
-st.markdown("""
-<style>
-h1 {
-    margin-bottom: 0rem;
-}
-hr {
-    margin-top: 0.3rem;
-    margin-bottom: 1rem;
-}
-</style>
-""", unsafe_allow_html=True)
-
 
 # ---------- INSTRUCTIONS ----------
 if "show_instructions" not in st.session_state:
@@ -32,7 +20,6 @@ if st.session_state.show_instructions:
 2. Upload it here.  
 3. Check your **attendance percentage**.  
 4. Cross check your **cumulative attendance** with the minimum required lectures listed below according to the credit structure.
-5. The uploaded attendance report is processed temporarily in the memory and is not stored. When the page refreshes or the session ends, the file disappears automatically.
 """)
 
     if st.button("Close"):
@@ -40,14 +27,12 @@ if st.session_state.show_instructions:
 
 
 # ---------- HEADER ----------
-st.markdown(
-    """
+st.markdown("""
 <h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
-<hr style="margin-top:0px; margin-bottom:15px;">
-""",
-    unsafe_allow_html=True
-)
-st.markdown("Created by Gaurav Khopkar")
+<hr style="margin-top:0px; margin-bottom:10px;">
+""", unsafe_allow_html=True)
+
+st.caption("Created by Gaurav Khopkar")
 
 st.markdown(
     '### Upload your Detailed Attendance Report from <a href="https://sdc-sppap1.svkm.ac.in:50001/irj/portal" target="_blank">SAP</a> here',
@@ -89,41 +74,46 @@ if uploaded_file:
 
         df.columns = ["Subject","Date","Attendance"]
         df = df.dropna()
-        # ---------- NOT UPDATED LECTURES ----------
-nu_rows = df[df["Attendance"] == "NU"]
 
-if not nu_rows.empty:
+        # ---------- NU DETECTION ----------
+        nu_rows = df[df["Attendance"] == "NU"]
 
-    nu_count = len(nu_rows)
+        if not nu_rows.empty:
 
-    try:
-        nu_date = pd.to_datetime(nu_rows["Date"]).max().strftime("%d %B")
-    except:
-        nu_date = nu_rows["Date"].iloc[0]
+            nu_count = len(nu_rows)
 
-    st.warning(f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU).")
+            try:
+                nu_date = pd.to_datetime(nu_rows["Date"]).max().strftime("%d %B")
+            except:
+                nu_date = nu_rows["Date"].iloc[0]
+
+            st.warning(f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU).")
+
         # ---------- LAST UPDATED DATE ----------
         try:
             latest_date = pd.to_datetime(df["Date"]).max().strftime("%d %B %Y")
         except:
             latest_date = df["Date"].max()
 
+        # ---------- REMOVE NU FROM CALCULATIONS ----------
+        df_calc = df[df["Attendance"] != "NU"]
+
         # ---------- SUBJECT LIST ----------
-        subjects = df["Subject"].unique()
+        subjects = df_calc["Subject"].unique()
 
         result = pd.DataFrame({
             "Subject": subjects
         })
 
         # lectures conducted
-        conducted = df.groupby("Subject").size()
+        conducted = df_calc.groupby("Subject").size()
 
         # lectures attended
-        attended = df[df["Attendance"]=="P"].groupby("Subject").size()
+        attended = df_calc[df_calc["Attendance"]=="P"].groupby("Subject").size()
 
-        # missed dates
+        # missed dates (only A)
         missed_dates = (
-            df[df["Attendance"]=="A"]
+            df_calc[df_calc["Attendance"]=="A"]
             .groupby("Subject")["Date"]
             .apply(lambda x: ", ".join(x.astype(str)))
         )
@@ -189,5 +179,4 @@ credit_data = {
 
 credit_df = pd.DataFrame(credit_data)
 
-st.dataframe(credit_df, hide_index=True)
-
+st.dataframe(credit_df, hide_index=True, use_container_width=True)
