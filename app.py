@@ -180,7 +180,8 @@ if uploaded_file:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    # PDF download
+   # ---------- PDF DOWNLOAD ----------
+
 from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import getSampleStyleSheet
@@ -189,32 +190,25 @@ pdf_buffer = io.BytesIO()
 
 styles = getSampleStyleSheet()
 
-title = Paragraph(
-    "Attendance Report",
-    styles["Title"]
-)
-
-subtitle = Paragraph(
-    "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
-    styles["Normal"]
-)
-
 table_data = [result.columns.tolist()] + result.values.tolist()
 
 table = Table(table_data)
 
-pdf = SimpleDocTemplate(
-    pdf_buffer,
-    pagesize=landscape(letter)  # makes PDF landscape
+header = Paragraph(
+    "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
+    styles["Normal"]
 )
 
 elements = [
-    title,
-    Spacer(1,12),
-    subtitle,
-    Spacer(1,20),
+    header,
+    Spacer(1, 15),
     table
 ]
+
+pdf = SimpleDocTemplate(
+    pdf_buffer,
+    pagesize=landscape(letter)
+)
 
 pdf.build(elements)
 
