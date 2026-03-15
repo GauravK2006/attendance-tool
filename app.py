@@ -79,10 +79,12 @@ def match_required(subject):
 st.info("""
 *How to use*
 
-1. Download your *Detailed Attendance Report* from the SAP Portal and upload it here.
-2. SAP only shows attendance updates between *18:00 and 07:00*.
-3. The tool calculates your attendance automatically.
-4. Uploaded files are processed only in memory.
+1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
+2. Note SAP only shows attendance updates between **18:00 and 07:00**.
+3. The tool calculates your attendance and displays **required lectures automatically**.
+4. You can download the generated calculation as a .pdf which includes reuired lectures for all your subjects.
+5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere. Once the session ends, the file is completely gone.
+6. As of now, this tool is only **restricted to Semester I to Semester IV** from the batches 2024-29 and 2025-30.
 """)
 
 
@@ -468,5 +470,12 @@ st.markdown("""
 <p style="font-size:0.85rem; color:gray;">
 This page is an independent student-created tool developed by <b>Gaurav Khopkar</b>.
 It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
-</p>
+<br>
+<p style="font-size:0.85rem; color:gray;">
+For defects or suggestions contact: <b>gauravkhopkar2006@hotmail.com</b>
+
+<br>
+<p style="font-size:0.85rem; color:gray;">
+Thank you for using this tool.
+
 """, unsafe_allow_html=True)
