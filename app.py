@@ -31,7 +31,6 @@ st.markdown("Created by Gaurav Khopkar")
 # ---------- LOAD CREDIT STRUCTURE ----------
 credit_df = pd.read_excel("credit structure.xlsx")
 credit_df.columns = credit_df.columns.str.strip()
-
 credit_df["Subject"] = credit_df["Subject"].str.lower().str.strip()
 
 credit_map = dict(
@@ -181,11 +180,9 @@ if uploaded_file:
 
     df_calc = df[df["Attendance"] != "NU"]
 
-
     subjects = df_calc["Subject"].unique()
 
     result = pd.DataFrame({"Subject": subjects})
-
 
     conducted = df_calc.groupby("Subject").size()
 
@@ -195,18 +192,14 @@ if uploaded_file:
         .size()
     )
 
-
     missed_dates = (
         df_calc[df_calc["Attendance"] == "A"]
         .groupby("Subject")["Date"]
         .apply(lambda x: ", ".join(x.astype(str)))
     )
 
-
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
-
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
-
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
 
@@ -221,11 +214,9 @@ if uploaded_file:
         r"(T\s*1|U\s*1)"
     )
 
-
     result = result.sort_values(
         by=["Base Subject", "Type"]
     )
-
 
     combined_conducted = (
         result.groupby("Base Subject")["Total Lectures Conducted"]
@@ -237,9 +228,7 @@ if uploaded_file:
         .transform("sum")
     )
 
-
     result["Current Cumulative Attendance"] = combined_attended
-
 
     result["Attendance Percentage"] = (
         combined_attended / combined_conducted * 100
@@ -251,12 +240,10 @@ if uploaded_file:
         result["Base Subject"].apply(match_required)
     )
 
-
     result["Required Cumulative Attendance"] = (
         result["Required Cumulative Attendance"]
         - result["Current Cumulative Attendance"]
     ).clip(lower=0)
-
 
     result["Required Cumulative Attendance"] = (
         result["Required Cumulative Attendance"]
@@ -265,20 +252,17 @@ if uploaded_file:
         .astype(object)
     )
 
-
     duplicated = result.duplicated("Base Subject")
 
     result.loc[duplicated, "Current Cumulative Attendance"] = ""
     result.loc[duplicated, "Required Cumulative Attendance"] = ""
     result.loc[duplicated, "Attendance Percentage"] = ""
 
-
     result.insert(
         0,
         "Sr. No.",
         range(1, len(result) + 1)
     )
-
 
     result = result[
         [
@@ -294,12 +278,16 @@ if uploaded_file:
     ]
 
 
-    # ---------- RELEVANT CREDIT STRUCTURE FIX ----------
+    # ---------- RELEVANT CREDIT STRUCTURE ----------
     base_subjects = result["Subject"].apply(normalize_subject).unique()
 
     relevant_credit_rows = credit_df[
-        credit_df["Subject"].isin(base_subjects)
+        credit_df["Subject"].apply(
+            lambda x: any(get_close_matches(x, base_subjects, cutoff=0.6))
+        )
     ]
+
+    relevant_credit_rows = relevant_credit_rows.sort_values(by="Subject")
 
 
     # ---------- PDF GENERATION ----------
@@ -321,7 +309,6 @@ if uploaded_file:
         alignment=1,
         wordWrap="CJK"
     )
-
 
     elements = []
 
@@ -345,7 +332,6 @@ if uploaded_file:
 
         elements.append(Spacer(1, 10))
 
-
     if nu_message:
 
         elements.append(
@@ -360,9 +346,7 @@ if uploaded_file:
         for col in result.columns
     ]
 
-
     table_data = [headers]
-
 
     for row in result.values.tolist():
 
@@ -370,9 +354,7 @@ if uploaded_file:
             [Paragraph(str(v), wrap_style) for v in row]
         )
 
-
     page_width = landscape(letter)[0] - 80
-
 
     col_widths = [
         page_width * 0.05,
@@ -385,13 +367,11 @@ if uploaded_file:
         page_width * 0.20
     ]
 
-
     attendance_table = Table(
         table_data,
         colWidths=col_widths,
         repeatRows=1
     )
-
 
     attendance_table.setStyle(
         TableStyle([
@@ -400,7 +380,6 @@ if uploaded_file:
             ("VALIGN", (0,0), (-1,-1), "MIDDLE")
         ])
     )
-
 
     elements.append(attendance_table)
 
@@ -421,7 +400,6 @@ if uploaded_file:
             [Paragraph(str(v), wrap_style) for v in row]
         )
 
-
     credit_table = Table(
         credit_data,
         repeatRows=1
@@ -436,7 +414,6 @@ if uploaded_file:
 
     elements.append(credit_table)
 
-
     pdf = SimpleDocTemplate(
         pdf_buffer,
         pagesize=landscape(letter)
@@ -445,7 +422,6 @@ if uploaded_file:
     pdf.build(elements)
 
     pdf_buffer.seek(0)
-
 
     st.download_button(
         label="Download as PDF",
