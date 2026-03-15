@@ -29,7 +29,7 @@ if st.session_state.show_instructions:
 # ---------- HEADER ----------
 st.title("KPMSOL Attendance Calculator")
 st.markdown("---")
-st.caption("Created by Gaurav Khopkar")
+st.markdown("Created by Gaurav Khopkar")
 
 st.markdown(
     '### Upload your Detailed Attendance Report from <a href="https://sdc-sppap1.svkm.ac.in:50001/irj/portal" target="_blank">SAP</a> here',
