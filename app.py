@@ -185,34 +185,30 @@ if uploaded_file:
 from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
 
 pdf_buffer = io.BytesIO()
 
 styles = getSampleStyleSheet()
 
-# convert dataframe into wrapped table data
+# Wrap text inside cells
 table_data = [result.columns.tolist()]
 
-for row in result.values:
-    formatted_row = []
-    for cell in row:
-        formatted_row.append(Paragraph(str(cell), styles["Normal"]))
-    table_data.append(formatted_row)
+for row in result.values.tolist():
+    wrapped_row = [Paragraph(str(cell), styles["Normal"]) for cell in row]
+    table_data.append(wrapped_row)
 
-# column widths (balanced for landscape page)
+# Column widths that fit landscape page
 col_widths = [
-    200,  # Subject
-    90,   # Conducted
-    90,   # Attended
-    90,  # Cumulative
-    90,  # Percentage
-    260   # Dates Missed
+    2.2 * inch,  # Subject
+    1.2 * inch,  # Conducted
+    1.2 * inch,  # Attended
+    1.4 * inch,  # Cumulative
+    1.4 * inch,  # Percentage
+    2.8 * inch   # Dates Missed
 ]
 
-table = Table(
-    table_data,
-    colWidths=col_widths
-)
+table = Table(table_data, colWidths=col_widths)
 
 title = Paragraph("<b>Attendance Report</b>", styles["Title"])
 
@@ -223,9 +219,9 @@ header = Paragraph(
 
 elements = [
     title,
-    Spacer(1,10),
+    Spacer(1, 10),
     header,
-    Spacer(1,20),
+    Spacer(1, 20),
     table
 ]
 
