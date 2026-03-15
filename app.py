@@ -2,10 +2,11 @@ import streamlit as st
 import pdfplumber
 import pandas as pd
 import io
+from difflib import get_close_matches
 
 from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer, TableStyle
 from reportlab.lib.pagesizes import landscape, letter
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 
@@ -27,15 +28,39 @@ st.markdown("Created by Gaurav Khopkar")
 # ---------- LOAD CREDIT STRUCTURE ----------
 credit_df = pd.read_excel("credit structure.xlsx")
 
-# clean headers
 credit_df.columns = credit_df.columns.str.strip()
-
-# clean subjects
 credit_df["Subject"] = credit_df["Subject"].str.lower().str.strip()
 
 credit_map = dict(
     zip(credit_df["Subject"], credit_df["Required Cumulative Attendance"])
 )
+
+# ---------- KNOWN SAP SHORT NAMES ----------
+manual_subject_map = {
+    "public policy & gov in india": "public policy & governance in india",
+    "access to justice and gov": "access to justice and governance",
+    "bharatiya nag sur san": "bharatiya nagarik suraksha sanhita"
+}
+
+# ---------- SUBJECT MATCH FUNCTION ----------
+def match_required(subject):
+
+    subject = subject.lower()
+
+    # manual correction
+    for key in manual_subject_map:
+        if key in subject:
+            corrected = manual_subject_map[key]
+            return credit_map.get(corrected)
+
+    # fuzzy match
+    match = get_close_matches(subject, credit_map.keys(), n=1, cutoff=0.45)
+
+    if match:
+        return credit_map[match[0]]
+
+    return None
+
 
 # ---------- INFO BOX ----------
 st.info("""
@@ -54,6 +79,7 @@ unsafe_allow_html=True
 )
 
 uploaded_file = st.file_uploader("Upload File", type="pdf")
+
 
 # ---------- PROCESS FILE ----------
 if uploaded_file:
@@ -76,6 +102,7 @@ if uploaded_file:
 
     df = df[[1,2,5]]
     df.columns = ["Subject","Date","Attendance"]
+
     df = df.dropna()
 
     df["Subject"] = df["Subject"].str.strip()
@@ -126,34 +153,26 @@ if uploaded_file:
     combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
     result["Current Cumulative Attendance"] = combined_attended
-    result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
 
-    # ---------- MATCH REQUIRED ATTENDANCE ----------
-    def match_required(subject):
+    result["Attendance Percentage"] = (
+        combined_attended / combined_conducted * 100
+    ).round(2)
 
-        subject = subject.lower()
-
-        for key in credit_map:
-            if key in subject or subject in key:
-                return credit_map[key]
-
-        return None
-
+    # ---------- REQUIRED CUMULATIVE ----------
     result["Required Cumulative Attendance"] = result["Base Subject"].apply(match_required)
 
-    # ---------- CALCULATE REMAINING ----------
     result["Required Cumulative Attendance"] = (
         result["Required Cumulative Attendance"] - result["Current Cumulative Attendance"]
-    ).clip(lower=0)
+    ).clip(lower=0).astype("Int64")
 
-    # ---------- OPTION B (blank second T/U row) ----------
+    # ---------- OPTION B ----------
     duplicated = result.duplicated("Base Subject")
 
-    result.loc[duplicated, "Current Cumulative Attendance"] = ""
-    result.loc[duplicated, "Required Cumulative Attendance"] = ""
-    result.loc[duplicated, "Attendance Percentage"] = ""
+    result.loc[duplicated,"Current Cumulative Attendance"] = ""
+    result.loc[duplicated,"Required Cumulative Attendance"] = ""
+    result.loc[duplicated,"Attendance Percentage"] = ""
 
-    result.insert(0, "Sr. No.", range(1, len(result)+1))
+    result.insert(0,"Sr. No.",range(1,len(result)+1))
 
     result = result[
         [
@@ -168,7 +187,17 @@ if uploaded_file:
         ]
     ]
 
-    # ---------- SHOW TABLE ----------
+    # ---------- WRAP HEADERS ----------
+    st.markdown("""
+    <style>
+    .dataframe th {
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        text-align:center;
+    }
+    </style>
+    """,unsafe_allow_html=True)
+
     st.dataframe(
         result,
         use_container_width=True,
@@ -180,29 +209,48 @@ if uploaded_file:
     st.markdown("### Download Report")
 
     pdf_buffer = io.BytesIO()
+
     styles = getSampleStyleSheet()
 
-    headers = []
-    for col in result.columns:
-        headers.append(Paragraph("<b>{}</b>".format(col), styles["Normal"]))
+    wrap_style = ParagraphStyle(
+        "wrap",
+        parent=styles["Normal"],
+        wordWrap="CJK"
+    )
 
-    table_data = [headers]
+    header_style = ParagraphStyle(
+        "header",
+        parent=styles["Normal"],
+        alignment=1,
+        wordWrap="CJK"
+    )
+
+    headers = [
+        Paragraph(f"<b>{col}</b>",header_style)
+        for col in result.columns
+    ]
+
+    table_data=[headers]
 
     for row in result.values.tolist():
-        wrapped_row = []
+        wrapped_row=[]
         for cell in row:
-            wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
+            wrapped_row.append(
+                Paragraph(str(cell),wrap_style)
+            )
         table_data.append(wrapped_row)
 
-    col_widths = [
-        40,
-        200,
-        120,
-        120,
-        150,
-        130,
-        170,
-        220
+    page_width = landscape(letter)[0] - 80
+
+    col_widths=[
+        page_width*0.05,
+        page_width*0.22,
+        page_width*0.11,
+        page_width*0.11,
+        page_width*0.14,
+        page_width*0.12,
+        page_width*0.14,
+        page_width*0.11
     ]
 
     attendance_table = Table(
@@ -214,12 +262,17 @@ if uploaded_file:
     attendance_table.setStyle(TableStyle([
         ("GRID",(0,0),(-1,-1),0.5,colors.grey),
         ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+        ("VALIGN",(0,0),(-1,-1),"MIDDLE")
     ]))
 
-    elements = []
+    elements=[]
 
-    elements.append(Paragraph("<b>Attendance Report</b>", styles["Title"]))
-    elements.append(Spacer(1,20))
+    elements.append(
+        Paragraph("<b>Attendance Report</b>",styles["Title"])
+    )
+
+    elements.append(Spacer(1,15))
+
     elements.append(attendance_table)
 
     pdf = SimpleDocTemplate(
@@ -241,12 +294,9 @@ if uploaded_file:
 # ---------- FOOTER ----------
 st.markdown("---")
 
-st.markdown(
-"""
+st.markdown("""
 <p style="font-size:0.85rem; color:gray;">
 This page is an independent student-created tool developed by <b>Gaurav Khopkar</b>.
 It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
 </p>
-""",
-unsafe_allow_html=True
-)
+""",unsafe_allow_html=True)
