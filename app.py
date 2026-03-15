@@ -2,6 +2,7 @@ import streamlit as st
 import pdfplumber
 import pandas as pd
 import requests
+import uuid
 
 st.set_page_config(
     page_title="KPMSOL Attendance Calculator",
@@ -145,11 +146,22 @@ credit_df = pd.DataFrame(credit_data)
 st.table(credit_df)
 import requests
 
-# ---------- PAGE VIEW COUNTER ----------
+# ---------- UNIQUE USER COUNTER ----------
+
 try:
-    response = requests.get("https://api.countapi.xyz/hit/kpmsol-attendance-tool/views")
-    views = response.json()["value"]
+
+    if "visitor_id" not in st.session_state:
+        st.session_state.visitor_id = str(uuid.uuid4())
+
+        # increment counter only first time per session
+        requests.get("https://api.countapi.xyz/hit/kpmsol-attendance-tool/visitors")
+
+    response = requests.get("https://api.countapi.xyz/get/kpmsol-attendance-tool/visitors")
+
+    visitors = response.json()["value"]
+
     st.markdown("---")
-    st.caption(f"👀 Page Views: {views}")
+    st.caption(f"👥 Unique Visitors: {visitors}")
+
 except:
     pass
