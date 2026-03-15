@@ -1,6 +1,7 @@
 import streamlit as st
 import pdfplumber
 import pandas as pd
+import requests
 
 st.set_page_config(
     page_title="KPMSOL Attendance Calculator",
