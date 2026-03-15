@@ -472,7 +472,7 @@ This page is an independent student-created tool developed by <b>Gaurav Khopkar<
 It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
 <br>
 <p style="font-size:0.85rem; color:gray;">
-For defects on this page or queries or suggestions contact: <b>gauravkhopkar2006@hotmail.com</b>
+For queries or suggestions or any defects on this page, contact: <b>gauravkhopkar2006@hotmail.com</b>
 
 <br>
 <p style="font-size:0.85rem; color:gray;">
