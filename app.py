@@ -171,30 +171,15 @@ result["Required Cumulative Attendance"] = (
     .astype(int)
 )
 
-# allow blanks for T1/U1 rows
+# allow blanks later
 result["Required Cumulative Attendance"] = result["Required Cumulative Attendance"].astype(object)
-    # ---------- OPTION B ----------
-    duplicated = result.duplicated("Base Subject")
 
-    result.loc[duplicated,"Current Cumulative Attendance"] = ""
-    result.loc[duplicated,"Required Cumulative Attendance"] = ""
-    result.loc[duplicated,"Attendance Percentage"] = ""
+# ---------- OPTION B ----------
+duplicated = result.duplicated("Base Subject")
 
-    result.insert(0,"Sr. No.",range(1,len(result)+1))
-
-    result = result[
-        [
-            "Sr. No.",
-            "Subject",
-            "Total Lectures Conducted",
-            "Total Lectures Attended",
-            "Current Cumulative Attendance",
-            "Attendance Percentage",
-            "Required Cumulative Attendance",
-            "Dates Missed"
-        ]
-    ]
-
+result.loc[duplicated, "Current Cumulative Attendance"] = ""
+result.loc[duplicated, "Required Cumulative Attendance"] = ""
+result.loc[duplicated, "Attendance Percentage"] = ""
     # ---------- WRAP HEADERS ----------
     st.markdown("""
     <style>
