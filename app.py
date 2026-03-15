@@ -2,33 +2,17 @@ import streamlit as st
 import pdfplumber
 import pandas as pd
 import io
-from reportlab.platypus import SimpleDocTemplate, Table
-from reportlab.lib.pagesizes import letter
+
+from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer, TableStyle
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
 
 st.set_page_config(
     page_title="KPMSOL Attendance Calculator",
     page_icon="📊",
     layout="wide"
 )
-
-# ---------- INSTRUCTIONS ----------
-if "show_instructions" not in st.session_state:
-    st.session_state.show_instructions = True
-
-if st.session_state.show_instructions:
-    st.info("""
-**How to use**
-
-1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
-2. Note that SAP Portal only works between 18:00 to 07:00. 
-3. Check your **attendance percentage**.  
-4. Cross check your **cumulative attendance** with the minimum required lectures listed below according to the credit structure.
-5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere. Once the session ends, the file is completely gone.
-""")
-
-    if st.button("Close"):
-        st.session_state.show_instructions = False
-
 
 # ---------- HEADER ----------
 st.markdown("""
@@ -48,7 +32,7 @@ st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
 
-# ---------- PROCESS PDF ----------
+# ---------- PROCESS FILE ----------
 if uploaded_file:
 
     with st.spinner("Processing attendance report..."):
@@ -78,7 +62,7 @@ if uploaded_file:
         df.columns = ["Subject","Date","Attendance"]
         df = df.dropna()
 
-        # ---------- NU DETECTION ----------
+        # ---------- NU WARNING ----------
         nu_rows = df[df["Attendance"] == "NU"]
 
         if not nu_rows.empty:
@@ -92,21 +76,13 @@ if uploaded_file:
 
             st.warning(f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU).")
 
-        # ---------- LAST UPDATED DATE ----------
-        try:
-            latest_date = pd.to_datetime(df["Date"]).max().strftime("%d %B %Y")
-        except:
-            latest_date = df["Date"].max()
-
-        # ---------- REMOVE NU FROM CALCULATIONS ----------
+        # ---------- REMOVE NU ----------
         df_calc = df[df["Attendance"] != "NU"]
 
         # ---------- SUBJECT LIST ----------
         subjects = df_calc["Subject"].unique()
 
-        result = pd.DataFrame({
-            "Subject": subjects
-        })
+        result = pd.DataFrame({"Subject": subjects})
 
         conducted = df_calc.groupby("Subject").size()
         attended = df_calc[df_calc["Attendance"]=="P"].groupby("Subject").size()
@@ -121,7 +97,7 @@ if uploaded_file:
         result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
         result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-        # ---------- GROUP T1 & U1 ----------
+        # ---------- GROUP T1/U1 ----------
         result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1).*","",regex=True)
         result["Type"] = result["Subject"].str.extract(r"(T1|U1)")
 
@@ -157,19 +133,16 @@ if uploaded_file:
         hide_index=True
     )
 
-    st.caption(f"Report generated from data up to: {latest_date}")
-
-
     # ---------- DOWNLOAD OPTIONS ----------
     st.markdown("### Download Report")
 
     col1, col2 = st.columns(2)
 
-    # Excel
+    # ---------- EXCEL ----------
     excel_buffer = io.BytesIO()
 
     with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
-        result.to_excel(writer, index=False, sheet_name="Attendance")
+        result.to_excel(writer, index=False)
 
     excel_buffer.seek(0)
 
@@ -180,81 +153,73 @@ if uploaded_file:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-# ---------- PDF DOWNLOAD ----------
 
-import io
-from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer, TableStyle
-from reportlab.lib.pagesizes import landscape, letter
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib import colors
+    # ---------- PDF ----------
+    pdf_buffer = io.BytesIO()
 
-pdf_buffer = io.BytesIO()
+    styles = getSampleStyleSheet()
 
-styles = getSampleStyleSheet()
+    headers = []
+    for col in result.columns:
+        headers.append(Paragraph("<b>{}</b>".format(col), styles["Normal"]))
 
-# Wrap headers
-headers = []
-for col in result.columns:
-    headers.append(Paragraph(f"<b>{col}</b>", styles["Normal"]))
+    table_data = [headers]
 
-table_data = [headers]
+    for row in result.values.tolist():
+        wrapped_row = []
+        for cell in row:
+            wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
+        table_data.append(wrapped_row)
 
-# Wrap every cell
-for row in result.values.tolist():
-    wrapped_row = []
-    for cell in row:
-        wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
-    table_data.append(wrapped_row)
+    page_width = landscape(letter)[0] - 80
+    num_cols = len(result.columns)
+    col_width = page_width / num_cols
 
-# Calculate page width
-page_width = landscape(letter)[0] - 80
-num_cols = len(result.columns)
-col_width = page_width / num_cols
+    table = Table(
+        table_data,
+        colWidths=[col_width] * num_cols,
+        repeatRows=1
+    )
 
-table = Table(
-    table_data,
-    colWidths=[col_width] * num_cols,
-    repeatRows=1
-)
+    table.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+    ]))
 
-# Table styling
-table.setStyle(TableStyle([
-    ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-    ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-    ("VALIGN", (0,0), (-1,-1), "TOP")
-]))
+    title = Paragraph("<b>Attendance Report</b>", styles["Title"])
 
-title = Paragraph("<b>Attendance Report</b>", styles["Title"])
+    header = Paragraph(
+        "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
+        styles["Normal"]
+    )
 
-header = Paragraph(
-    "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
-    styles["Normal"]
-)
+    elements = [
+        title,
+        Spacer(1,10),
+        header,
+        Spacer(1,20),
+        table
+    ]
 
-elements = [
-    title,
-    Spacer(1,10),
-    header,
-    Spacer(1,20),
-    table
-]
+    pdf = SimpleDocTemplate(
+        pdf_buffer,
+        pagesize=landscape(letter)
+    )
 
-pdf = SimpleDocTemplate(
-    pdf_buffer,
-    pagesize=landscape(letter)
-)
+    pdf.build(elements)
 
-pdf.build(elements)
+    pdf_buffer.seek(0)
 
-pdf_buffer.seek(0)
+    col2.download_button(
+        label="Download as PDF (.pdf)",
+        data=pdf_buffer,
+        file_name="attendance_report.pdf",
+        mime="application/pdf"
+    )
 
-col2.download_button(
-    label="Download as PDF (.pdf)",
-    data=pdf_buffer,
-    file_name="attendance_report.pdf",
-    mime="application/pdf"
-)
-# ---------- CREDIT STRUCTURE ----------
+
+# ---------- CREDIT TABLE ----------
 st.markdown("### Credits")
 
 credit_data = {
@@ -279,15 +244,16 @@ st.markdown("---")
 st.markdown(
 """
 <p style="font-size:0.85rem; color:gray;">
-This page is an independent student-created tool developed by <b>Gaurav Khopkar</b> for convenience in estimating attendance from the SAP Detailed Attendance Report. 
-It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal, and the official records on SAP shall prevail in case of any discrepancy.
+This page is an independent student-created tool developed by <b>Gaurav Khopkar</b>.  
+It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal.  
+Official attendance records on SAP shall prevail in case of any discrepancy.
 
-<br>
-<p style="font-size:0.85rem; color:gray;">
-For any defects, queries, or suggestions, contact: <b>gauravkhopkar2006@hotmail.com</b>
+<br><br>
 
-<br>
-<p style="font-size:0.85rem; color:gray;">
+For defects, queries, or suggestions: <b>gauravkhopkar2006@hotmail.com</b>
+
+<br><br>
+
 Thank you for using this tool.
 </p>
 """,
