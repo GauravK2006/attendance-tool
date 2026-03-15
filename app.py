@@ -146,78 +146,122 @@ if uploaded_file:
         hide_index=True
     )
 
-    # ---------- DOWNLOAD PDF ----------
-    st.markdown("### Download Report")
+   # ---------- DOWNLOAD PDF ----------
+st.markdown("### Download Report")
 
-    pdf_buffer = io.BytesIO()
-    styles = getSampleStyleSheet()
+# -------- EXTRACT STUDENT NAME FROM PDF --------
+student_name = "Student Name Not Found"
 
-    headers = []
-    for col in result.columns:
-        headers.append(Paragraph("<b>{}</b>".format(col), styles["Normal"]))
+with pdfplumber.open(uploaded_file) as pdf:
+    first_page_text = pdf.pages[0].extract_text()
 
-    table_data = [headers]
+    for line in first_page_text.split("\n"):
+        if "Name" in line:
+            student_name = line.strip()
+            break
 
-    for row in result.values.tolist():
+pdf_buffer = io.BytesIO()
+styles = getSampleStyleSheet()
 
-        wrapped_row = []
+# ---------- MAIN TABLE ----------
+headers = []
+for col in result.columns:
+    headers.append(Paragraph("<b>{}</b>".format(col), styles["Normal"]))
 
-        for cell in row:
-            wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
+table_data = [headers]
 
-        table_data.append(wrapped_row)
+for row in result.values.tolist():
+    wrapped_row = []
+    for cell in row:
+        wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
+    table_data.append(wrapped_row)
 
-    page_width = landscape(letter)[0] - 80
-    num_cols = len(result.columns)
-    col_width = page_width / num_cols
+page_width = landscape(letter)[0] - 80
+num_cols = len(result.columns)
+col_width = page_width / num_cols
 
-    table = Table(
-        table_data,
-        colWidths=[col_width]*num_cols,
-        repeatRows=1
+attendance_table = Table(
+    table_data,
+    colWidths=[col_width]*num_cols,
+    repeatRows=1
+)
+
+attendance_table.setStyle(TableStyle([
+    ("GRID",(0,0),(-1,-1),0.5,colors.grey),
+    ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+    ("VALIGN",(0,0),(-1,-1),"TOP")
+]))
+
+# ---------- CREDIT STRUCTURE TABLE ----------
+credit_headers = ["Credits","Total Lectures","Lectures + Tutorials Required"]
+
+credit_rows = [
+    ["4 Credit","60 Lectures + 15 Tutorials","53"],
+    ["3 Credit","45 Lectures + 15 Tutorials","42"],
+    ["2 Credit","30 Lectures","21"],
+    ["Non-Credit","30 Lectures","21"]
+]
+
+credit_table_data = [credit_headers] + credit_rows
+
+credit_table = Table(
+    credit_table_data,
+    colWidths=[180,260,180]
+)
+
+credit_table.setStyle(TableStyle([
+    ("GRID",(0,0),(-1,-1),0.5,colors.grey),
+    ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+]))
+
+# ---------- PDF ELEMENTS ----------
+elements = []
+
+elements.append(Paragraph("<b>Attendance Report</b>", styles["Title"]))
+elements.append(Spacer(1,10))
+
+elements.append(
+    Paragraph(
+        "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
+        styles["Normal"]
     )
+)
 
-    table.setStyle(TableStyle([
-        ("GRID",(0,0),(-1,-1),0.5,colors.grey),
-        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
-        ("VALIGN",(0,0),(-1,-1),"TOP")
-    ]))
+elements.append(Spacer(1,10))
 
-    elements = []
+# student name
+elements.append(Paragraph("<b>{}</b>".format(student_name), styles["Normal"]))
+elements.append(Spacer(1,15))
 
-    elements.append(Paragraph("<b>Attendance Report</b>", styles["Title"]))
+# NU message
+if nu_message:
+    elements.append(Paragraph(nu_message, styles["Normal"]))
     elements.append(Spacer(1,10))
 
-    elements.append(
-        Paragraph(
-            "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
-            styles["Normal"]
-        )
-    )
+elements.append(attendance_table)
 
-    if nu_message:
-        elements.append(Spacer(1,10))
-        elements.append(Paragraph(nu_message, styles["Normal"]))
+elements.append(Spacer(1,25))
 
-    elements.append(Spacer(1,20))
-    elements.append(table)
+elements.append(Paragraph("<b>Credit Structure</b>", styles["Heading3"]))
+elements.append(Spacer(1,10))
 
-    pdf = SimpleDocTemplate(
-        pdf_buffer,
-        pagesize=landscape(letter)
-    )
+elements.append(credit_table)
 
-    pdf.build(elements)
+pdf = SimpleDocTemplate(
+    pdf_buffer,
+    pagesize=landscape(letter)
+)
 
-    pdf_buffer.seek(0)
+pdf.build(elements)
 
-    st.download_button(
-        label="Download as PDF (.pdf)",
-        data=pdf_buffer,
-        file_name="attendance_report.pdf",
-        mime="application/pdf"
-    )
+pdf_buffer.seek(0)
 
+st.download_button(
+    label="Download as PDF (.pdf)",
+    data=pdf_buffer,
+    file_name="attendance_report.pdf",
+    mime="application/pdf"
+)
 # ---------- CREDITS TABLE ----------
 st.markdown("### Credits")
 
