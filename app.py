@@ -17,6 +17,7 @@ st.set_page_config(
 # ---------- HEADER ----------
 st.markdown("""
 <h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
+<h6> Unofficial </h6>
 <hr style="margin-top:0px; margin-bottom:10px;">
 """, unsafe_allow_html=True)
 
