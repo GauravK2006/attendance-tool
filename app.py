@@ -204,8 +204,8 @@ col_widths = [
     200,  # Subject
     90,   # Conducted
     90,   # Attended
-    120,  # Cumulative
-    120,  # Percentage
+    90,  # Cumulative
+    90,  # Percentage
     260   # Dates Missed
 ]
 
