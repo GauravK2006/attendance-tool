@@ -185,7 +185,8 @@ st.markdown("---")
 
 st.markdown(
 """
-<small>
+<p style="font-size:0.85rem; color:gray;">
+
 This page is an independent student-created tool developed by <b>Gaurav Khopkar</b> for convenience in estimating attendance from the SAP Detailed Attendance Report. It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal, and the official records on SAP shall prevail in case of any discrepancy.
 
 <br><br>
