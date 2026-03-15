@@ -104,23 +104,20 @@ if uploaded_file:
 
     with pdfplumber.open(uploaded_file) as pdf:
 
-        # ---------- FILE VALIDATION ----------
-        first_page_text = pdf.pages[0].extract_text()
-
-        if "Detailed Attendance Report" not in first_page_text:
-            st.error("Invalid file. Please upload the SAP Detailed Attendance Report.")
-            st.stop()
-
-        # ---------- STUDENT NAME EXTRACTION ----------
+        # ---------- STUDENT NAME ----------
         student_name = "Student Name Not Found"
+
+        first_page_text = pdf.pages[0].extract_text()
 
         for line in first_page_text.split("\n"):
 
             if "Name" in line:
+
                 student_name = line.strip()
+
                 break
 
-        # ---------- DATE RANGE EXTRACTION ----------
+        # ---------- DATE RANGE ----------
         from_date = ""
         to_date = ""
 
@@ -131,6 +128,7 @@ if uploaded_file:
                 parts = line.split("To")
 
                 from_date = parts[0].replace("From", "").strip()
+
                 to_date = parts[1].strip()
 
                 break
@@ -337,12 +335,14 @@ if uploaded_file:
 
     elements.append(Spacer(1, 10))
 
-    elements.append(Paragraph(student_name, styles["Normal"]))
+    elements.append(
+        Paragraph(student_name, styles["Normal"])
+    )
 
     elements.append(Spacer(1, 5))
 
     elements.append(
-        Paragraph(f"From: {from_date} &nbsp;&nbsp;&nbsp; To: {to_date}", styles["Normal"])
+        Paragraph(f"From: {from_date}   To: {to_date}", styles["Normal"])
     )
 
     elements.append(Spacer(1, 5))
