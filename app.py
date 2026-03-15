@@ -21,7 +21,7 @@ st.markdown("""
 <hr style="margin-top:0px; margin-bottom:10px;">
 """, unsafe_allow_html=True)
 
-st.caption("Created by Gaurav Khopkar")
+st.markdown("Created by Gaurav Khopkar")
 
 # ---------- BLUE INFO BOX ----------
 st.info("""
@@ -271,12 +271,12 @@ st.markdown(
 This page is an independent student-created tool developed by <b>Gaurav Khopkar</b> for convenience in estimating attendance from the SAP Detailed Attendance Report.
 It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
 
-<br><br>
-
+<br>
+<p style="font-size:0.85rem; color:gray;">
 For defects or suggestions contact: <b>gauravkhopkar2006@hotmail.com</b>
 
-<br><br>
-
+<br>
+<p style="font-size:0.85rem; color:gray;">
 Thank you for using this tool.
 </p>
 """,
