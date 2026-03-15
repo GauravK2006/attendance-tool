@@ -100,7 +100,6 @@ if uploaded_file:
 
         first_page_text = pdf.pages[0].extract_text()
 
-        # ---------- STUDENT NAME ----------
         student_name = "Student Name Not Found"
 
         for line in first_page_text.split("\n"):
@@ -111,7 +110,6 @@ if uploaded_file:
                 break
 
 
-        # ---------- REPORT DURATION ----------
         report_duration = ""
 
         for line in first_page_text.split("\n"):
@@ -122,7 +120,6 @@ if uploaded_file:
                 break
 
 
-        # ---------- TABLE EXTRACTION ----------
         for page in pdf.pages:
 
             table = page.extract_table()
@@ -152,7 +149,6 @@ if uploaded_file:
     df = df.dropna()
 
     df["Subject"] = df["Subject"].str.strip()
-
     df["Attendance"] = df["Attendance"].str.strip()
 
 
@@ -184,6 +180,7 @@ if uploaded_file:
 
     result = pd.DataFrame({"Subject": subjects})
 
+
     conducted = df_calc.groupby("Subject").size()
 
     attended = (
@@ -214,9 +211,8 @@ if uploaded_file:
         r"(T\s*1|U\s*1)"
     )
 
-    result = result.sort_values(
-        by=["Base Subject", "Type"]
-    )
+    result = result.sort_values(by=["Base Subject", "Type"])
+
 
     combined_conducted = (
         result.groupby("Base Subject")["Total Lectures Conducted"]
@@ -258,6 +254,7 @@ if uploaded_file:
     result.loc[duplicated, "Required Cumulative Attendance"] = ""
     result.loc[duplicated, "Attendance Percentage"] = ""
 
+
     result.insert(
         0,
         "Sr. No.",
@@ -278,16 +275,17 @@ if uploaded_file:
     ]
 
 
-    # ---------- RELEVANT CREDIT STRUCTURE ----------
+    # ---------- CREDIT TABLE FIX ----------
     base_subjects = result["Subject"].apply(normalize_subject).unique()
 
     relevant_credit_rows = credit_df[
-        credit_df["Subject"].apply(
-            lambda x: any(get_close_matches(x, base_subjects, cutoff=0.6))
-        )
+        credit_df["Subject"].apply(normalize_subject).isin(base_subjects)
     ]
 
-    relevant_credit_rows = relevant_credit_rows.sort_values(by="Subject")
+    relevant_credit_rows = relevant_credit_rows.set_index("Subject")
+    relevant_credit_rows = relevant_credit_rows.loc[
+        [s for s in base_subjects if s in relevant_credit_rows.index]
+    ].reset_index()
 
 
     # ---------- PDF GENERATION ----------
@@ -309,6 +307,7 @@ if uploaded_file:
         alignment=1,
         wordWrap="CJK"
     )
+
 
     elements = []
 
