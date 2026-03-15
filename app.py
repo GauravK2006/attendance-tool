@@ -4,6 +4,7 @@ import pandas as pd
 import io
 import re
 from difflib import get_close_matches
+from datetime import datetime
 
 from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer, TableStyle
 from reportlab.lib.pagesizes import landscape, letter
@@ -80,10 +81,10 @@ st.info("""
 **How to use**
 
 1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
-2. Note that, SAP only shows attendance updates between **18:00 and 07:00**.
+2. Note that SAP only shows attendance updates between **18:00 and 07:00**.
 3. The tool calculates your attendance and displays **required lectures automatically**.
 4. You can download the generated calculation as a .pdf which includes required lectures for all your subjects.
-5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere. Once the session ends, the file is completely gone.
+5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere.
 6. As of now, this tool is only **restricted to Semester I to Semester IV** from the batches 2024-29 and 2025-30.
 """)
 
@@ -103,19 +104,36 @@ if uploaded_file:
 
     with pdfplumber.open(uploaded_file) as pdf:
 
+        # ---------- FILE VALIDATION ----------
+        first_page_text = pdf.pages[0].extract_text()
+
+        if "Detailed Attendance Report" not in first_page_text:
+            st.error("Invalid file. Please upload the SAP Detailed Attendance Report.")
+            st.stop()
+
         # ---------- STUDENT NAME EXTRACTION ----------
         student_name = "Student Name Not Found"
-
-        first_page_text = pdf.pages[0].extract_text()
 
         for line in first_page_text.split("\n"):
 
             if "Name" in line:
-
                 student_name = line.strip()
-
                 break
 
+        # ---------- DATE RANGE EXTRACTION ----------
+        from_date = ""
+        to_date = ""
+
+        for line in first_page_text.split("\n"):
+
+            if "From" in line and "To" in line:
+
+                parts = line.split("To")
+
+                from_date = parts[0].replace("From", "").strip()
+                to_date = parts[1].strip()
+
+                break
 
         # ---------- TABLE EXTRACTION ----------
         for page in pdf.pages:
@@ -290,18 +308,6 @@ if uploaded_file:
     ]
 
 
-    # ---------- DISPLAY TABLE ----------
-    st.dataframe(
-        result,
-        height=650,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Dates Missed": st.column_config.TextColumn(width="large")
-        }
-    )
-
-
     # ---------- PDF GENERATION ----------
     st.markdown("### Download Report")
 
@@ -331,8 +337,18 @@ if uploaded_file:
 
     elements.append(Spacer(1, 10))
 
+    elements.append(Paragraph(student_name, styles["Normal"]))
+
+    elements.append(Spacer(1, 5))
+
     elements.append(
-        Paragraph(student_name, styles["Normal"])
+        Paragraph(f"From: {from_date} &nbsp;&nbsp;&nbsp; To: {to_date}", styles["Normal"])
+    )
+
+    elements.append(Spacer(1, 5))
+
+    elements.append(
+        Paragraph(f"Generated: {datetime.now().strftime('%d %B %Y | %H:%M')}", styles["Normal"])
     )
 
     elements.append(Spacer(1, 10))
@@ -395,54 +411,6 @@ if uploaded_file:
 
     elements.append(attendance_table)
 
-    elements.append(Spacer(1, 30))
-
-
-    # ---------- RELEVANT CREDIT STRUCTURE ----------
-    relevant_credit_rows = credit_df[
-        credit_df["Subject"].isin(matched_subjects)
-    ]
-
-
-    elements.append(
-        Paragraph("<b>Credit Structure</b>", styles["Heading2"])
-    )
-
-    elements.append(Spacer(1, 10))
-
-
-    credit_headers = [
-        Paragraph(f"<b>{c}</b>", header_style)
-        for c in relevant_credit_rows.columns
-    ]
-
-
-    credit_table_data = [credit_headers]
-
-
-    for _, row in relevant_credit_rows.iterrows():
-
-        credit_table_data.append(
-            [Paragraph(str(v), wrap_style) for v in row]
-        )
-
-
-    credit_table = Table(
-        credit_table_data,
-        repeatRows=1
-    )
-
-
-    credit_table.setStyle(
-        TableStyle([
-            ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-            ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
-        ])
-    )
-
-
-    elements.append(credit_table)
-
 
     pdf = SimpleDocTemplate(
         pdf_buffer,
@@ -463,6 +431,18 @@ if uploaded_file:
     )
 
 
+    # ---------- DISPLAY TABLE ----------
+    st.dataframe(
+        result,
+        height=650,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Dates Missed": st.column_config.TextColumn(width="large")
+        }
+    )
+
+
 # ---------- FOOTER ----------
 st.markdown("---")
 
@@ -477,5 +457,4 @@ For queries or suggestions or any defects on this page, contact: <b>gauravkhopka
 <br>
 <p style="font-size:0.85rem; color:gray;">
 Thank you for using this tool.
-
 """, unsafe_allow_html=True)
