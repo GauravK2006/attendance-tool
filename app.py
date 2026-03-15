@@ -7,6 +7,18 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+st.markdown("""
+<style>
+h1 {
+    margin-bottom: 0rem;
+}
+hr {
+    margin-top: 0.3rem;
+    margin-bottom: 1rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # ---------- INSTRUCTIONS ----------
 if "show_instructions" not in st.session_state:
