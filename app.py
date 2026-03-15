@@ -176,4 +176,5 @@ credit_data = {
 
 credit_df = pd.DataFrame(credit_data)
 
-st.table(credit_df)
+st.dataframe(credit_df, hide_index=True)
+
