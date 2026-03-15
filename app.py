@@ -180,3 +180,23 @@ credit_data = {
 credit_df = pd.DataFrame(credit_data)
 
 st.dataframe(credit_df, hide_index=True, use_container_width=True)
+
+st.markdown("---")
+
+st.markdown(
+"""
+<small>
+This page is an independent student-created tool developed by <b>Gaurav Khopkar</b> for convenience in estimating attendance from the SAP Detailed Attendance Report. It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal, and the official records on SAP shall prevail in case of any discrepancy.
+
+<br><br>
+
+For any defects, queries, or suggestions, contact: <b>gauravkhopkar2006@hotmail.com</b>
+
+<br><br>
+
+Thank you for using this tool.
+</small>
+""",
+unsafe_allow_html=True
+)
+
