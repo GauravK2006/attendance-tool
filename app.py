@@ -144,22 +144,3 @@ credit_data = {
 credit_df = pd.DataFrame(credit_data)
 
 st.table(credit_df)
-import requests
-
-# ---------- UNIQUE USER COUNTER ----------
-# ---------- VISITOR COUNTER ----------
-st.markdown("---")
-
-try:
-    namespace = "kpmsol-attendance-tool"
-    key = "visits"
-
-    url = f"https://api.countapi.xyz/hit/{namespace}/{key}"
-    response = requests.get(url).json()
-
-    visitors = response["value"]
-
-    st.caption(f"👥 Visitors: {visitors}")
-
-except:
-    st.caption("👥 Visitors counter unavailable")
