@@ -180,26 +180,52 @@ if uploaded_file:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    # PDF
-    pdf_buffer = io.BytesIO()
+    # PDF download
+from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.styles import getSampleStyleSheet
 
-    table_data = [result.columns.tolist()] + result.values.tolist()
+pdf_buffer = io.BytesIO()
 
-    pdf = SimpleDocTemplate(pdf_buffer, pagesize=letter)
-    table = Table(table_data)
+styles = getSampleStyleSheet()
 
-    pdf.build([table])
+title = Paragraph(
+    "Attendance Report",
+    styles["Title"]
+)
 
-    pdf_buffer.seek(0)
+subtitle = Paragraph(
+    "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
+    styles["Normal"]
+)
 
-    col2.download_button(
-        label="Download as PDF (.pdf)",
-        data=pdf_buffer,
-        file_name="attendance_report.pdf",
-        mime="application/pdf"
-    )
+table_data = [result.columns.tolist()] + result.values.tolist()
 
+table = Table(table_data)
 
+pdf = SimpleDocTemplate(
+    pdf_buffer,
+    pagesize=landscape(letter)  # makes PDF landscape
+)
+
+elements = [
+    title,
+    Spacer(1,12),
+    subtitle,
+    Spacer(1,20),
+    table
+]
+
+pdf.build(elements)
+
+pdf_buffer.seek(0)
+
+col2.download_button(
+    label="Download as PDF (.pdf)",
+    data=pdf_buffer,
+    file_name="attendance_report.pdf",
+    mime="application/pdf"
+)
 # ---------- CREDIT STRUCTURE ----------
 st.markdown("### Credits")
 
