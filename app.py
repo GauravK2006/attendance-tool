@@ -25,6 +25,7 @@ if st.session_state.show_instructions:
     if st.button("Close"):
         st.session_state.show_instructions = False
 
+
 # ---------- HEADER ----------
 st.title("KPMSOL Attendance Calculator")
 st.markdown("---")
@@ -38,6 +39,7 @@ st.markdown(
 st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 
 uploaded_file = st.file_uploader("Upload File", type="pdf")
+
 
 # ---------- PROCESS PDF ----------
 if uploaded_file:
@@ -84,18 +86,23 @@ if uploaded_file:
         result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
         result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-        # combine T1 + U1 subjects
+        # ---------- GROUP T1 & U1 ----------
         result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1).*","",regex=True)
+        result["Type"] = result["Subject"].str.extract(r"(T1|U1)")
 
+        result = result.sort_values(by=["Base Subject","Type"])
+
+        # cumulative calculations
         combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
         combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
         result["Cumulative Attendance"] = combined_attended
         result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
 
-        result.drop(columns=["Base Subject"], inplace=True)
+        # cleanup
+        result.drop(columns=["Base Subject","Type"], inplace=True)
 
-        # add serial number
+        # serial numbers
         result.insert(0, "Sr. No.", range(1, len(result)+1))
 
         result = result[
@@ -116,6 +123,7 @@ if uploaded_file:
         height=650,
         hide_index=True
     )
+
 
 # ---------- CREDIT STRUCTURE ----------
 st.markdown("### Credits")
