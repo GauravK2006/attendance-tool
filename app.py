@@ -182,6 +182,7 @@ if uploaded_file:
 
 # ---------- PDF DOWNLOAD ----------
 
+import io
 from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer, TableStyle
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import getSampleStyleSheet
@@ -192,25 +193,27 @@ pdf_buffer = io.BytesIO()
 styles = getSampleStyleSheet()
 
 # Wrap headers
-headers = [Paragraph(f"<b>{col}</b>", styles["Normal"]) for col in result.columns]
+headers = []
+for col in result.columns:
+    headers.append(Paragraph(f"<b>{col}</b>", styles["Normal"]))
 
 table_data = [headers]
 
 # Wrap every cell
 for row in result.values.tolist():
-    wrapped_row = [Paragraph(str(cell), styles["Normal"]) for cell in row]
+    wrapped_row = []
+    for cell in row:
+        wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
     table_data.append(wrapped_row)
 
-# Page width
+# Calculate page width
 page_width = landscape(letter)[0] - 80
 num_cols = len(result.columns)
-
-# Equal column distribution
 col_width = page_width / num_cols
 
 table = Table(
     table_data,
-    colWidths=[col_width]*num_cols,
+    colWidths=[col_width] * num_cols,
     repeatRows=1
 )
 
