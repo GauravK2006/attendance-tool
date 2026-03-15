@@ -10,14 +10,14 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 
-# ---------------- PAGE CONFIG ----------------
+# ---------- PAGE CONFIG ----------
 st.set_page_config(
     page_title="KPMSOL Attendance Calculator",
     page_icon="📊",
     layout="wide"
 )
 
-# ---------------- HEADER ----------------
+# ---------- HEADER ----------
 st.markdown("""
 <h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
 <h6>Unofficial</h6>
@@ -26,7 +26,7 @@ st.markdown("""
 
 st.markdown("Created by Gaurav Khopkar")
 
-# ---------------- LOAD CREDIT STRUCTURE ----------------
+# ---------- LOAD CREDIT STRUCTURE ----------
 credit_df = pd.read_excel("credit structure.xlsx")
 
 credit_df.columns = credit_df.columns.str.strip()
@@ -36,23 +36,30 @@ credit_map = dict(
     zip(credit_df["Subject"], credit_df["Required Cumulative Attendance"])
 )
 
-# ---------------- MANUAL SAP NAME FIXES ----------------
+# ---------- MANUAL FIXES FOR SAP SHORT NAMES ----------
 manual_subject_map = {
-    "public policy & gov in india": "public policy & governance in india",
+    "public policy & gov": "public policy & governance in india",
     "access to justice and gov": "access to justice and governance",
     "bharatiya nag sur san": "bharatiya nagarik suraksha sanhita"
 }
 
 
+# ---------- SUBJECT MATCH FUNCTION ----------
 def match_required(subject):
 
     subject = subject.lower()
 
+    # remove T1/U1 and division text
+    subject = subject.replace("t1", "").replace("u1", "")
+    subject = subject.split("-")[0].strip()
+
+    # manual mappings
     for key in manual_subject_map:
         if key in subject:
             corrected = manual_subject_map[key]
             return credit_map.get(corrected)
 
+    # fuzzy matching
     match = get_close_matches(subject, credit_map.keys(), n=1, cutoff=0.45)
 
     if match:
@@ -61,7 +68,7 @@ def match_required(subject):
     return None
 
 
-# ---------------- INFO BOX ----------------
+# ---------- INFO BOX ----------
 st.info("""
 *How to use*
 
@@ -80,7 +87,7 @@ unsafe_allow_html=True
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
 
-# ---------------- PROCESS FILE ----------------
+# ---------- PROCESS FILE ----------
 if uploaded_file:
 
     rows = []
@@ -107,7 +114,7 @@ if uploaded_file:
     df["Subject"] = df["Subject"].str.strip()
     df["Attendance"] = df["Attendance"].str.strip()
 
-    # ---------------- NU DETECTION ----------------
+    # ---------- NU DETECTION ----------
     nu_rows = df[df["Attendance"] == "NU"]
     nu_message = None
 
@@ -142,7 +149,7 @@ if uploaded_file:
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-    # ---------------- GROUP T1/U1 ----------------
+    # ---------- GROUP T1/U1 ----------
     result["Base Subject"] = result["Subject"].str.replace(r"\s*(T\s*1|U\s*1).*", "", regex=True)
     result["Type"] = result["Subject"].str.extract(r"(T\s*1|U\s*1)")
 
@@ -157,7 +164,7 @@ if uploaded_file:
         combined_attended / combined_conducted * 100
     ).round(2)
 
-    # ---------------- REQUIRED CUMULATIVE ----------------
+    # ---------- REQUIRED CUMULATIVE ----------
     result["Required Cumulative Attendance"] = result["Base Subject"].apply(match_required)
 
     result["Required Cumulative Attendance"] = (
@@ -172,7 +179,7 @@ if uploaded_file:
 
     result["Required Cumulative Attendance"] = result["Required Cumulative Attendance"].astype(object)
 
-    # ---------------- OPTION B (T1/U1) ----------------
+    # ---------- OPTION B (T1/U1 rows blank) ----------
     duplicated = result.duplicated("Base Subject")
 
     result.loc[duplicated, "Current Cumulative Attendance"] = ""
@@ -194,25 +201,23 @@ if uploaded_file:
         ]
     ]
 
-    # ---------------- STREAMLIT TABLE WRAP ----------------
-    st.markdown("""
-    <style>
-    .dataframe th {
-        white-space: normal !important;
-        word-wrap: break-word !important;
-        text-align:center;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
+    # ---------- DISPLAY TABLE ----------
     st.dataframe(
         result,
         use_container_width=True,
-        height=650,
-        hide_index=True
+        hide_index=True,
+        column_config={
+            "Subject": st.column_config.TextColumn(width="medium"),
+            "Total Lectures Conducted": st.column_config.NumberColumn(width="small"),
+            "Total Lectures Attended": st.column_config.NumberColumn(width="small"),
+            "Current Cumulative Attendance": st.column_config.NumberColumn(width="small"),
+            "Attendance Percentage": st.column_config.NumberColumn(width="small"),
+            "Required Cumulative Attendance": st.column_config.NumberColumn(width="small"),
+            "Dates Missed": st.column_config.TextColumn(width="medium"),
+        }
     )
 
-    # ---------------- PDF GENERATION ----------------
+    # ---------- PDF GENERATION ----------
     st.markdown("### Download Report")
 
     pdf_buffer = io.BytesIO()
@@ -290,7 +295,7 @@ if uploaded_file:
     )
 
 
-# ---------------- FOOTER ----------------
+# ---------- FOOTER ----------
 st.markdown("---")
 
 st.markdown("""
