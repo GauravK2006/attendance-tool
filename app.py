@@ -133,92 +133,87 @@ if uploaded_file:
         hide_index=True
     )
 
-    # ---------- DOWNLOAD OPTIONS ----------
-    st.markdown("### Download Report")
+  # ---------- DOWNLOAD SECTION ----------
+st.markdown("### Download Report")
 
-    col1, col2 = st.columns(2)
+col1, col2 = st.columns([1,1])
 
-    # ---------- EXCEL ----------
-    excel_buffer = io.BytesIO()
+# ---------- PDF DOWNLOAD ----------
+pdf_buffer = io.BytesIO()
+styles = getSampleStyleSheet()
 
-    with pd.ExcelWriter(excel_buffer, engine="xlsxwriter") as writer:
-        result.to_excel(writer, index=False)
+headers = [Paragraph(f"<b>{col}</b>", styles["Normal"]) for col in result.columns]
 
-    excel_buffer.seek(0)
+table_data = [headers]
 
-    col1.download_button(
-        label="Download as Excel (.xlsx)",
-        data=excel_buffer,
-        file_name="attendance_report.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+for row in result.values.tolist():
+    wrapped_row = [Paragraph(str(cell), styles["Normal"]) for cell in row]
+    table_data.append(wrapped_row)
 
+page_width = landscape(letter)[0] - 80
+num_cols = len(result.columns)
+col_width = page_width / num_cols
 
-    # ---------- PDF ----------
-    pdf_buffer = io.BytesIO()
+table = Table(
+    table_data,
+    colWidths=[col_width]*num_cols,
+    repeatRows=1
+)
 
-    styles = getSampleStyleSheet()
+table.setStyle(TableStyle([
+    ("GRID",(0,0),(-1,-1),0.5,colors.grey),
+    ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+    ("VALIGN",(0,0),(-1,-1),"TOP")
+]))
 
-    headers = []
-    for col in result.columns:
-        headers.append(Paragraph("<b>{}</b>".format(col), styles["Normal"]))
+title = Paragraph("<b>Attendance Report</b>", styles["Title"])
 
-    table_data = [headers]
+header = Paragraph(
+    "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
+    styles["Normal"]
+)
 
-    for row in result.values.tolist():
-        wrapped_row = []
-        for cell in row:
-            wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
-        table_data.append(wrapped_row)
+elements = [
+    title,
+    Spacer(1,10),
+    header,
+    Spacer(1,15),
+]
 
-    page_width = landscape(letter)[0] - 80
-    num_cols = len(result.columns)
-    col_width = page_width / num_cols
+# ---------- ADD NU MESSAGE TO PDF ----------
+if not nu_rows.empty:
+    nu_count = len(nu_rows)
 
-    table = Table(
-        table_data,
-        colWidths=[col_width] * num_cols,
-        repeatRows=1
-    )
+    try:
+        nu_date = pd.to_datetime(nu_rows["Date"]).max().strftime("%d %B %Y")
+    except:
+        nu_date = nu_rows["Date"].iloc[0]
 
-    table.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-    ]))
-
-    title = Paragraph("<b>Attendance Report</b>", styles["Title"])
-
-    header = Paragraph(
-        "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
+    nu_message = Paragraph(
+        f"<b>Note:</b> {nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU).",
         styles["Normal"]
     )
 
-    elements = [
-        title,
-        Spacer(1,10),
-        header,
-        Spacer(1,20),
-        table
-    ]
+    elements.append(nu_message)
+    elements.append(Spacer(1,15))
 
-    pdf = SimpleDocTemplate(
-        pdf_buffer,
-        pagesize=landscape(letter)
-    )
+elements.append(table)
 
-    pdf.build(elements)
+pdf = SimpleDocTemplate(
+    pdf_buffer,
+    pagesize=landscape(letter)
+)
 
-    pdf_buffer.seek(0)
+pdf.build(elements)
 
-    col2.download_button(
-        label="Download as PDF (.pdf)",
-        data=pdf_buffer,
-        file_name="attendance_report.pdf",
-        mime="application/pdf"
-    )
+pdf_buffer.seek(0)
 
-
+st.download_button(
+    label="Download Attendance Report (.pdf)",
+    data=pdf_buffer,
+    file_name="attendance_report.pdf",
+    mime="application/pdf"
+)
 # ---------- CREDIT TABLE ----------
 st.markdown("### Credits")
 
