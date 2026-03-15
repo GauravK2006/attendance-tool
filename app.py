@@ -180,7 +180,7 @@ if uploaded_file:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-   # ---------- PDF DOWNLOAD ----------
+# ---------- PDF DOWNLOAD ----------
 
 from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer
 from reportlab.lib.pagesizes import landscape, letter
@@ -192,7 +192,22 @@ styles = getSampleStyleSheet()
 
 table_data = [result.columns.tolist()] + result.values.tolist()
 
-table = Table(table_data)
+# manual column widths (points)
+col_widths = [
+    180,  # Subject
+    90,   # Conducted
+    90,   # Attended
+    120,  # Cumulative
+    120,  # Percentage
+    250   # Dates Missed
+]
+
+table = Table(
+    table_data,
+    colWidths=col_widths
+)
+
+title = Paragraph("<b>Attendance Report</b>", styles["Title"])
 
 header = Paragraph(
     "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
@@ -200,8 +215,10 @@ header = Paragraph(
 )
 
 elements = [
+    title,
+    Spacer(1,10),
     header,
-    Spacer(1, 15),
+    Spacer(1,20),
     table
 ]
 
