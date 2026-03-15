@@ -102,8 +102,6 @@ if not nu_rows.empty:
         nu_date = nu_rows["Date"].iloc[0]
 
     st.warning(f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU).")
-
-
         # ---------- LAST UPDATED DATE ----------
         try:
             latest_date = pd.to_datetime(df["Date"]).max().strftime("%d %B %Y")
