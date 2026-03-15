@@ -100,38 +100,36 @@ uploaded_file = st.file_uploader("Upload File", type="pdf")
 # ---------- PROCESS FILE ----------
 if uploaded_file:
 
+    # timestamp captured at time of generation
+    report_timestamp = datetime.now().strftime("%d %B %Y | %H:%M")
+
     rows = []
 
     with pdfplumber.open(uploaded_file) as pdf:
 
+        first_page_text = pdf.pages[0].extract_text()
+
         # ---------- STUDENT NAME ----------
         student_name = "Student Name Not Found"
-
-        first_page_text = pdf.pages[0].extract_text()
 
         for line in first_page_text.split("\n"):
 
             if "Name" in line:
 
                 student_name = line.strip()
-
                 break
 
-        # ---------- DATE RANGE ----------
-        from_date = ""
-        to_date = ""
+
+        # ---------- EXTRACT FROM/TO EXACTLY ----------
+        date_range_line = ""
 
         for line in first_page_text.split("\n"):
 
             if "From" in line and "To" in line:
 
-                parts = line.split("To")
-
-                from_date = parts[0].replace("From", "").strip()
-
-                to_date = parts[1].strip()
-
+                date_range_line = line.strip()
                 break
+
 
         # ---------- TABLE EXTRACTION ----------
         for page in pdf.pages:
@@ -279,9 +277,7 @@ if uploaded_file:
     duplicated = result.duplicated("Base Subject")
 
     result.loc[duplicated, "Current Cumulative Attendance"] = ""
-
     result.loc[duplicated, "Required Cumulative Attendance"] = ""
-
     result.loc[duplicated, "Attendance Percentage"] = ""
 
 
@@ -341,14 +337,15 @@ if uploaded_file:
 
     elements.append(Spacer(1, 5))
 
-    elements.append(
-        Paragraph(f"From: {from_date}   To: {to_date}", styles["Normal"])
-    )
+    if date_range_line:
+        elements.append(
+            Paragraph(date_range_line, styles["Normal"])
+        )
 
     elements.append(Spacer(1, 5))
 
     elements.append(
-        Paragraph(f"Generated: {datetime.now().strftime('%d %B %Y | %H:%M')}", styles["Normal"])
+        Paragraph(f"Generated: {report_timestamp}", styles["Normal"])
     )
 
     elements.append(Spacer(1, 10))
