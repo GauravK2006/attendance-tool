@@ -17,7 +17,7 @@ st.set_page_config(
 # ---------- HEADER ----------
 st.markdown("""
 <h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
-<h6> Unofficial </h6>
+<h6>Unofficial</h6>
 <hr style="margin-top:0px; margin-bottom:10px;">
 """, unsafe_allow_html=True)
 
@@ -25,13 +25,13 @@ st.caption("Created by Gaurav Khopkar")
 
 # ---------- BLUE INFO BOX ----------
 st.info("""
-**How to use**
+*How to use*
 
-1. Download your **Detailed Attendance Report** from the SAP Portal. Upload it here.  
-2. Note that SAP Portal only displays attendance between 18:00 to 07:00.
-3. The tool will automatically calculate your **attendance percentage**.  
-4. Cross-check your **cumulative attendance** with the minimum lectures required below.
-5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere. Once the session ends, the file is completely gone.
+1. Download your *Detailed Attendance Report* from the SAP Portal and upload it here.  
+2. SAP only shows attendance updates between *18:00 and 07:00*.  
+3. The tool automatically calculates your *attendance percentage*.  
+4. Cross-check your *cumulative attendance* with the required lectures below.  
+5. The uploaded report is processed *only in memory and never stored*.
 """)
 
 st.markdown(
@@ -85,10 +85,8 @@ if uploaded_file:
             nu_date = nu_rows["Date"].iloc[0]
 
         nu_message = f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU)."
-
         st.warning(nu_message)
 
-    # remove NU from calculations
     df_calc = df[df["Attendance"] != "NU"]
 
     subjects = df_calc["Subject"].unique()
@@ -146,126 +144,112 @@ if uploaded_file:
         hide_index=True
     )
 
-   # ---------- DOWNLOAD PDF ----------
-st.markdown("### Download Report")
+    # ---------- DOWNLOAD PDF ----------
+    st.markdown("### Download Report")
 
-# -------- EXTRACT STUDENT NAME FROM PDF --------
-student_name = "Student Name Not Found"
+    # extract student name
+    student_name = "Student Name Not Found"
 
-with pdfplumber.open(uploaded_file) as pdf:
-    first_page_text = pdf.pages[0].extract_text()
+    with pdfplumber.open(uploaded_file) as pdf:
+        text = pdf.pages[0].extract_text()
 
-    for line in first_page_text.split("\n"):
-        if "Name" in line:
-            student_name = line.strip()
-            break
+        for line in text.split("\n"):
+            if "Name" in line:
+                student_name = line.strip()
+                break
 
-pdf_buffer = io.BytesIO()
-styles = getSampleStyleSheet()
+    pdf_buffer = io.BytesIO()
+    styles = getSampleStyleSheet()
 
-# ---------- MAIN TABLE ----------
-headers = []
-for col in result.columns:
-    headers.append(Paragraph("<b>{}</b>".format(col), styles["Normal"]))
+    headers = []
+    for col in result.columns:
+        headers.append(Paragraph("<b>{}</b>".format(col), styles["Normal"]))
 
-table_data = [headers]
+    table_data = [headers]
 
-for row in result.values.tolist():
-    wrapped_row = []
-    for cell in row:
-        wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
-    table_data.append(wrapped_row)
+    for row in result.values.tolist():
+        wrapped_row = []
+        for cell in row:
+            wrapped_row.append(Paragraph(str(cell), styles["Normal"]))
+        table_data.append(wrapped_row)
 
-page_width = landscape(letter)[0] - 80
-num_cols = len(result.columns)
-col_width = page_width / num_cols
+    page_width = landscape(letter)[0] - 80
+    col_width = page_width / len(result.columns)
 
-attendance_table = Table(
-    table_data,
-    colWidths=[col_width]*num_cols,
-    repeatRows=1
-)
-
-attendance_table.setStyle(TableStyle([
-    ("GRID",(0,0),(-1,-1),0.5,colors.grey),
-    ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
-    ("VALIGN",(0,0),(-1,-1),"TOP")
-]))
-
-# ---------- CREDIT STRUCTURE TABLE ----------
-credit_headers = ["Credits","Total Lectures","Lectures + Tutorials Required"]
-
-credit_rows = [
-    ["4 Credit","60 Lectures + 15 Tutorials","53"],
-    ["3 Credit","45 Lectures + 15 Tutorials","42"],
-    ["2 Credit","30 Lectures","21"],
-    ["Non-Credit","30 Lectures","21"]
-]
-
-credit_table_data = [credit_headers] + credit_rows
-
-credit_table = Table(
-    credit_table_data,
-    colWidths=[180,260,180]
-)
-
-credit_table.setStyle(TableStyle([
-    ("GRID",(0,0),(-1,-1),0.5,colors.grey),
-    ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
-]))
-
-# ---------- PDF ELEMENTS ----------
-elements = []
-
-elements.append(Paragraph("<b>Attendance Report</b>", styles["Title"]))
-elements.append(Spacer(1,10))
-
-elements.append(
-    Paragraph(
-        "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
-        styles["Normal"]
+    attendance_table = Table(
+        table_data,
+        colWidths=[col_width]*len(result.columns),
+        repeatRows=1
     )
-)
 
-elements.append(Spacer(1,10))
+    attendance_table.setStyle(TableStyle([
+        ("GRID",(0,0),(-1,-1),0.5,colors.grey),
+        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+    ]))
 
-# student name
-elements.append(Paragraph("<b>{}</b>".format(student_name), styles["Normal"]))
-elements.append(Spacer(1,15))
+    # credit structure
+    credit_data = [
+        ["Credits","Total Lectures","Lectures + Tutorials Required"],
+        ["4 Credit","60 Lectures + 15 Tutorials","53"],
+        ["3 Credit","45 Lectures + 15 Tutorials","42"],
+        ["2 Credit","30 Lectures","21"],
+        ["Non-Credit","30 Lectures","21"]
+    ]
 
-# NU message
-if nu_message:
-    elements.append(Paragraph(nu_message, styles["Normal"]))
+    credit_table = Table(credit_data)
+
+    credit_table.setStyle(TableStyle([
+        ("GRID",(0,0),(-1,-1),0.5,colors.grey),
+        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+    ]))
+
+    elements = []
+
+    elements.append(Paragraph("<b>Attendance Report</b>", styles["Title"]))
     elements.append(Spacer(1,10))
 
-elements.append(attendance_table)
+    elements.append(
+        Paragraph(
+            "This file was downloaded from KPMSOL Attendance Calculator (unofficial)",
+            styles["Normal"]
+        )
+    )
 
-elements.append(Spacer(1,25))
+    elements.append(Spacer(1,10))
+    elements.append(Paragraph(student_name, styles["Normal"]))
+    elements.append(Spacer(1,15))
 
-elements.append(Paragraph("<b>Credit Structure</b>", styles["Heading3"]))
-elements.append(Spacer(1,10))
+    if nu_message:
+        elements.append(Paragraph(nu_message, styles["Normal"]))
+        elements.append(Spacer(1,10))
 
-elements.append(credit_table)
+    elements.append(attendance_table)
 
-pdf = SimpleDocTemplate(
-    pdf_buffer,
-    pagesize=landscape(letter)
-)
+    elements.append(Spacer(1,25))
+    elements.append(Paragraph("<b>Credit Structure</b>", styles["Heading3"]))
+    elements.append(Spacer(1,10))
+    elements.append(credit_table)
 
-pdf.build(elements)
+    pdf = SimpleDocTemplate(
+        pdf_buffer,
+        pagesize=landscape(letter)
+    )
 
-pdf_buffer.seek(0)
+    pdf.build(elements)
 
-st.download_button(
-    label="Download as PDF (.pdf)",
-    data=pdf_buffer,
-    file_name="attendance_report.pdf",
-    mime="application/pdf"
-)
+    pdf_buffer.seek(0)
+
+    st.download_button(
+        label="Download as PDF (.pdf)",
+        data=pdf_buffer,
+        file_name="attendance_report.pdf",
+        mime="application/pdf"
+    )
+
 # ---------- CREDITS TABLE ----------
 st.markdown("### Credits")
 
-credit_data = {
+credit_df = pd.DataFrame({
     "Credits": ["4 Credit","3 Credit","2 Credit","Non-Credit"],
     "Total Lectures": [
         "60 Lectures + 15 Tutorials",
@@ -274,15 +258,9 @@ credit_data = {
         "30 Lectures"
     ],
     "Lectures + Tutorials Required": ["53","42","21","21"]
-}
+})
 
-credit_df = pd.DataFrame(credit_data)
-
-st.dataframe(
-    credit_df,
-    hide_index=True,
-    use_container_width=True
-)
+st.dataframe(credit_df, hide_index=True, use_container_width=True)
 
 # ---------- FOOTER ----------
 st.markdown("---")
@@ -290,15 +268,15 @@ st.markdown("---")
 st.markdown(
 """
 <p style="font-size:0.85rem; color:gray;">
-This page is an independent student-created tool developed by <b>Gaurav Khopkar</b> for convenience in estimating attendance from the SAP Detailed Attendance Report. 
-It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal, and the official records on SAP shall prevail in case of any discrepancy.
+This page is an independent student-created tool developed by <b>Gaurav Khopkar</b> for convenience in estimating attendance from the SAP Detailed Attendance Report.
+It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
 
-<br>
-<p style="font-size:0.85rem; color:gray;">
-For any defects, queries, or suggestions, contact: <b>gauravkhopkar2006@hotmail.com</b>
+<br><br>
 
-<br>
-<p style="font-size:0.85rem; color:gray;">
+For defects or suggestions contact: <b>gauravkhopkar2006@hotmail.com</b>
+
+<br><br>
+
 Thank you for using this tool.
 </p>
 """,
