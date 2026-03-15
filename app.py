@@ -2,9 +2,13 @@ import streamlit as st
 import pdfplumber
 import pandas as pd
 
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="KPMSOL Attendance Calculator",
+    page_icon="📊",
+    layout="wide"
+)
 
-# ---------- INSTRUCTIONS BOX ----------
+# ---------- INSTRUCTIONS ----------
 if "show_instructions" not in st.session_state:
     st.session_state.show_instructions = True
 
@@ -35,7 +39,7 @@ st.caption("From: 2ⁿᵈ Jan 2026 To: Yesterday")
 
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
-# ---------- ATTENDANCE CALCULATION ----------
+# ---------- PROCESS PDF ----------
 if uploaded_file:
 
     with st.spinner("Processing attendance report..."):
@@ -50,48 +54,61 @@ if uploaded_file:
                     for row in table[1:]:
                         rows.append(row)
 
-    df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
 
-    df = df[[1,2,5]]
-    df.columns = ["Subject","Date","Attendance"]
-    df = df.dropna()
+        df = df[[1,2,5]]
+        df.columns = ["Subject","Date","Attendance"]
+        df = df.dropna()
 
-    conducted = df.groupby("Subject").size()
-    attended = df[df["Attendance"]=="P"].groupby("Subject").size()
+        # -------- SUBJECT LIST --------
+        subjects = df["Subject"].unique()
 
-    missed_dates = (
-        df[df["Attendance"]=="A"]
-        .groupby("Subject")["Date"]
-        .apply(lambda x: ", ".join(x.astype(str)))
-    )
+        result = pd.DataFrame({
+            "Subject": subjects
+        })
 
-    result = pd.read_excel("template.xlsx")
+        # lectures conducted
+        conducted = df.groupby("Subject").size()
 
-    result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
-    result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
-    result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
+        # lectures attended
+        attended = df[df["Attendance"]=="P"].groupby("Subject").size()
 
-    result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1) - Div. C","",regex=True)
+        # missed dates
+        missed_dates = (
+            df[df["Attendance"]=="A"]
+            .groupby("Subject")["Date"]
+            .apply(lambda x: ", ".join(x.astype(str)))
+        )
 
-    combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
-    combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
+        result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
+        result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
+        result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-    result["Cumulative Attendance"] = combined_attended
-    result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
+        # combine T1 + U1 subjects
+        result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1).*","",regex=True)
 
-    result.drop(columns=["Base Subject"], inplace=True)
+        combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
+        combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
-    result = result[
-        [
-            "Sr. No.",
-            "Subject",
-            "Total Lectures Conducted",
-            "Total Lectures Attended",
-            "Cumulative Attendance",
-            "Attendance Percentage",
-            "Dates Missed"
+        result["Cumulative Attendance"] = combined_attended
+        result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
+
+        result.drop(columns=["Base Subject"], inplace=True)
+
+        # add serial number
+        result.insert(0, "Sr. No.", range(1, len(result)+1))
+
+        result = result[
+            [
+                "Sr. No.",
+                "Subject",
+                "Total Lectures Conducted",
+                "Total Lectures Attended",
+                "Cumulative Attendance",
+                "Attendance Percentage",
+                "Dates Missed"
+            ]
         ]
-    ]
 
     st.dataframe(
         result,
@@ -100,7 +117,7 @@ if uploaded_file:
         hide_index=True
     )
 
-# ---------- CREDIT STRUCTURE TABLE ----------
+# ---------- CREDIT STRUCTURE ----------
 st.markdown("### Credits")
 
 credit_data = {
