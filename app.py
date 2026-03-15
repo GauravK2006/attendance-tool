@@ -10,13 +10,14 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="KPMSOL Attendance Calculator",
     page_icon="📊",
     layout="wide"
 )
 
-# ---------- HEADER ----------
+# ---------------- HEADER ----------------
 st.markdown("""
 <h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
 <h6>Unofficial</h6>
@@ -25,7 +26,7 @@ st.markdown("""
 
 st.markdown("Created by Gaurav Khopkar")
 
-# ---------- LOAD CREDIT STRUCTURE ----------
+# ---------------- LOAD CREDIT STRUCTURE ----------------
 credit_df = pd.read_excel("credit structure.xlsx")
 
 credit_df.columns = credit_df.columns.str.strip()
@@ -35,25 +36,23 @@ credit_map = dict(
     zip(credit_df["Subject"], credit_df["Required Cumulative Attendance"])
 )
 
-# ---------- KNOWN SAP SHORT NAMES ----------
+# ---------------- MANUAL SAP NAME FIXES ----------------
 manual_subject_map = {
     "public policy & gov in india": "public policy & governance in india",
     "access to justice and gov": "access to justice and governance",
     "bharatiya nag sur san": "bharatiya nagarik suraksha sanhita"
 }
 
-# ---------- SUBJECT MATCH FUNCTION ----------
+
 def match_required(subject):
 
     subject = subject.lower()
 
-    # manual correction
     for key in manual_subject_map:
         if key in subject:
             corrected = manual_subject_map[key]
             return credit_map.get(corrected)
 
-    # fuzzy match
     match = get_close_matches(subject, credit_map.keys(), n=1, cutoff=0.45)
 
     if match:
@@ -62,7 +61,7 @@ def match_required(subject):
     return None
 
 
-# ---------- INFO BOX ----------
+# ---------------- INFO BOX ----------------
 st.info("""
 *How to use*
 
@@ -81,7 +80,7 @@ unsafe_allow_html=True
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
 
-# ---------- PROCESS FILE ----------
+# ---------------- PROCESS FILE ----------------
 if uploaded_file:
 
     rows = []
@@ -100,15 +99,15 @@ if uploaded_file:
 
     df = pd.DataFrame(rows)
 
-    df = df[[1,2,5]]
-    df.columns = ["Subject","Date","Attendance"]
+    df = df[[1, 2, 5]]
+    df.columns = ["Subject", "Date", "Attendance"]
 
     df = df.dropna()
 
     df["Subject"] = df["Subject"].str.strip()
     df["Attendance"] = df["Attendance"].str.strip()
 
-    # ---------- NU DETECTION ----------
+    # ---------------- NU DETECTION ----------------
     nu_rows = df[df["Attendance"] == "NU"]
     nu_message = None
 
@@ -131,10 +130,10 @@ if uploaded_file:
     result = pd.DataFrame({"Subject": subjects})
 
     conducted = df_calc.groupby("Subject").size()
-    attended = df_calc[df_calc["Attendance"]=="P"].groupby("Subject").size()
+    attended = df_calc[df_calc["Attendance"] == "P"].groupby("Subject").size()
 
     missed_dates = (
-        df_calc[df_calc["Attendance"]=="A"]
+        df_calc[df_calc["Attendance"] == "A"]
         .groupby("Subject")["Date"]
         .apply(lambda x: ", ".join(x.astype(str)))
     )
@@ -143,11 +142,11 @@ if uploaded_file:
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-    # ---------- GROUP T1/U1 ----------
-    result["Base Subject"] = result["Subject"].str.replace(r"\s*(T\s*1|U\s*1).*","",regex=True)
+    # ---------------- GROUP T1/U1 ----------------
+    result["Base Subject"] = result["Subject"].str.replace(r"\s*(T\s*1|U\s*1).*", "", regex=True)
     result["Type"] = result["Subject"].str.extract(r"(T\s*1|U\s*1)")
 
-    result = result.sort_values(by=["Base Subject","Type"])
+    result = result.sort_values(by=["Base Subject", "Type"])
 
     combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
     combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
@@ -157,30 +156,45 @@ if uploaded_file:
     result["Attendance Percentage"] = (
         combined_attended / combined_conducted * 100
     ).round(2)
-  # ---------- REQUIRED CUMULATIVE ----------
-result["Required Cumulative Attendance"] = result["Base Subject"].apply(match_required)
 
-result["Required Cumulative Attendance"] = (
-    result["Required Cumulative Attendance"] - result["Current Cumulative Attendance"]
-).clip(lower=0)
+    # ---------------- REQUIRED CUMULATIVE ----------------
+    result["Required Cumulative Attendance"] = result["Base Subject"].apply(match_required)
 
-# convert to integer
-result["Required Cumulative Attendance"] = (
-    result["Required Cumulative Attendance"]
-    .fillna(0)
-    .astype(int)
-)
+    result["Required Cumulative Attendance"] = (
+        result["Required Cumulative Attendance"] - result["Current Cumulative Attendance"]
+    ).clip(lower=0)
 
-# allow blanks later
-result["Required Cumulative Attendance"] = result["Required Cumulative Attendance"].astype(object)
+    result["Required Cumulative Attendance"] = (
+        result["Required Cumulative Attendance"]
+        .fillna(0)
+        .astype(int)
+    )
 
-# ---------- OPTION B ----------
-duplicated = result.duplicated("Base Subject")
+    result["Required Cumulative Attendance"] = result["Required Cumulative Attendance"].astype(object)
 
-result.loc[duplicated, "Current Cumulative Attendance"] = ""
-result.loc[duplicated, "Required Cumulative Attendance"] = ""
-result.loc[duplicated, "Attendance Percentage"] = ""
-    # ---------- WRAP HEADERS ----------
+    # ---------------- OPTION B (T1/U1) ----------------
+    duplicated = result.duplicated("Base Subject")
+
+    result.loc[duplicated, "Current Cumulative Attendance"] = ""
+    result.loc[duplicated, "Required Cumulative Attendance"] = ""
+    result.loc[duplicated, "Attendance Percentage"] = ""
+
+    result.insert(0, "Sr. No.", range(1, len(result) + 1))
+
+    result = result[
+        [
+            "Sr. No.",
+            "Subject",
+            "Total Lectures Conducted",
+            "Total Lectures Attended",
+            "Current Cumulative Attendance",
+            "Attendance Percentage",
+            "Required Cumulative Attendance",
+            "Dates Missed"
+        ]
+    ]
+
+    # ---------------- STREAMLIT TABLE WRAP ----------------
     st.markdown("""
     <style>
     .dataframe th {
@@ -189,7 +203,7 @@ result.loc[duplicated, "Attendance Percentage"] = ""
         text-align:center;
     }
     </style>
-    """,unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     st.dataframe(
         result,
@@ -198,7 +212,7 @@ result.loc[duplicated, "Attendance Percentage"] = ""
         hide_index=True
     )
 
-    # ---------- PDF GENERATION ----------
+    # ---------------- PDF GENERATION ----------------
     st.markdown("### Download Report")
 
     pdf_buffer = io.BytesIO()
@@ -218,32 +232,27 @@ result.loc[duplicated, "Attendance Percentage"] = ""
         wordWrap="CJK"
     )
 
-    headers = [
-        Paragraph(f"<b>{col}</b>",header_style)
-        for col in result.columns
-    ]
+    headers = [Paragraph(f"<b>{col}</b>", header_style) for col in result.columns]
 
-    table_data=[headers]
+    table_data = [headers]
 
     for row in result.values.tolist():
-        wrapped_row=[]
+        wrapped_row = []
         for cell in row:
-            wrapped_row.append(
-                Paragraph(str(cell),wrap_style)
-            )
+            wrapped_row.append(Paragraph(str(cell), wrap_style))
         table_data.append(wrapped_row)
 
     page_width = landscape(letter)[0] - 80
 
-    col_widths=[
-        page_width*0.05,
-        page_width*0.22,
-        page_width*0.11,
-        page_width*0.11,
-        page_width*0.14,
-        page_width*0.12,
-        page_width*0.14,
-        page_width*0.11
+    col_widths = [
+        page_width * 0.05,
+        page_width * 0.22,
+        page_width * 0.11,
+        page_width * 0.11,
+        page_width * 0.14,
+        page_width * 0.12,
+        page_width * 0.14,
+        page_width * 0.11
     ]
 
     attendance_table = Table(
@@ -253,19 +262,15 @@ result.loc[duplicated, "Attendance Percentage"] = ""
     )
 
     attendance_table.setStyle(TableStyle([
-        ("GRID",(0,0),(-1,-1),0.5,colors.grey),
-        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
-        ("VALIGN",(0,0),(-1,-1),"MIDDLE")
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE")
     ]))
 
-    elements=[]
+    elements = []
 
-    elements.append(
-        Paragraph("<b>Attendance Report</b>",styles["Title"])
-    )
-
-    elements.append(Spacer(1,15))
-
+    elements.append(Paragraph("<b>Attendance Report</b>", styles["Title"]))
+    elements.append(Spacer(1, 15))
     elements.append(attendance_table)
 
     pdf = SimpleDocTemplate(
@@ -284,7 +289,8 @@ result.loc[duplicated, "Attendance Percentage"] = ""
         mime="application/pdf"
     )
 
-# ---------- FOOTER ----------
+
+# ---------------- FOOTER ----------------
 st.markdown("---")
 
 st.markdown("""
@@ -292,4 +298,4 @@ st.markdown("""
 This page is an independent student-created tool developed by <b>Gaurav Khopkar</b>.
 It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
 </p>
-""",unsafe_allow_html=True)
+""", unsafe_allow_html=True)
