@@ -182,33 +182,44 @@ if uploaded_file:
 
 # ---------- PDF DOWNLOAD ----------
 
-from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, Paragraph, Spacer, TableStyle
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.units import inch
+from reportlab.lib import colors
 
 pdf_buffer = io.BytesIO()
 
 styles = getSampleStyleSheet()
 
-# Wrap text inside cells
-table_data = [result.columns.tolist()]
+# Wrap headers
+headers = [Paragraph(f"<b>{col}</b>", styles["Normal"]) for col in result.columns]
 
+table_data = [headers]
+
+# Wrap every cell
 for row in result.values.tolist():
     wrapped_row = [Paragraph(str(cell), styles["Normal"]) for cell in row]
     table_data.append(wrapped_row)
 
-# Column widths that fit landscape page
-col_widths = [
-    2.2 * inch,  # Subject
-    1.2 * inch,  # Conducted
-    1.2 * inch,  # Attended
-    1.4 * inch,  # Cumulative
-    1.4 * inch,  # Percentage
-    2.8 * inch   # Dates Missed
-]
+# Page width
+page_width = landscape(letter)[0] - 80
+num_cols = len(result.columns)
 
-table = Table(table_data, colWidths=col_widths)
+# Equal column distribution
+col_width = page_width / num_cols
+
+table = Table(
+    table_data,
+    colWidths=[col_width]*num_cols,
+    repeatRows=1
+)
+
+# Table styling
+table.setStyle(TableStyle([
+    ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+    ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+    ("VALIGN", (0,0), (-1,-1), "TOP")
+]))
 
 title = Paragraph("<b>Attendance Report</b>", styles["Title"])
 
@@ -219,9 +230,9 @@ header = Paragraph(
 
 elements = [
     title,
-    Spacer(1, 10),
+    Spacer(1,10),
     header,
-    Spacer(1, 20),
+    Spacer(1,20),
     table
 ]
 
