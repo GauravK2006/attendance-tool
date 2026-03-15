@@ -8,6 +8,26 @@ from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 
+# ---------- HOW TO USE DIALOG ----------
+if "show_dialog" not in st.session_state:
+    st.session_state.show_dialog = True
+
+if st.session_state.show_dialog:
+
+    @st.dialog("How to use")
+    def show_instructions():
+        st.markdown("""
+1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.  
+2. Note that the SAP Portal displays attendance only between 06:00 PM and 07:00 AM.
+3. The tool will automatically calculate your **attendance percentage**.  
+4. Cross-check your **cumulative attendance** with the minimum required lectures listed below according to the credit structure.
+5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere. Once the session ends, the file is completely gone.
+        """)
+        if st.button("Close"):
+            st.session_state.show_dialog = False
+
+    show_instructions()
+
 st.set_page_config(
     page_title="KPMSOL Attendance Calculator",
     page_icon="📊",
@@ -16,7 +36,7 @@ st.set_page_config(
 
 # ---------- HEADER ----------
 st.markdown("""
-<h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
+<h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator <h6> (Unofficial) </h6></h1>
 <hr style="margin-top:0px; margin-bottom:10px;">
 """, unsafe_allow_html=True)
 
@@ -243,12 +263,12 @@ This page is an independent student-created tool developed by <b>Gaurav Khopkar<
 It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal.  
 Official attendance records on SAP shall prevail in case of any discrepancy.
 
-<br><br>
-
+<br>
+<p style="font-size:0.85rem; color:gray;">
 For defects, queries, or suggestions: <b>gauravkhopkar2006@hotmail.com</b>
 
-<br><br>
-
+<br>
+<p style="font-size:0.85rem; color:gray;">
 Thank you for using this tool.
 </p>
 """,
