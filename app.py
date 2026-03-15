@@ -190,16 +190,23 @@ pdf_buffer = io.BytesIO()
 
 styles = getSampleStyleSheet()
 
-table_data = [result.columns.tolist()] + result.values.tolist()
+# convert dataframe into wrapped table data
+table_data = [result.columns.tolist()]
 
-# manual column widths (points)
+for row in result.values:
+    formatted_row = []
+    for cell in row:
+        formatted_row.append(Paragraph(str(cell), styles["Normal"]))
+    table_data.append(formatted_row)
+
+# column widths (balanced for landscape page)
 col_widths = [
-    180,  # Subject
+    200,  # Subject
     90,   # Conducted
     90,   # Attended
     120,  # Cumulative
     120,  # Percentage
-    250   # Dates Missed
+    260   # Dates Missed
 ]
 
 table = Table(
