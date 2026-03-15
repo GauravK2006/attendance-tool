@@ -32,6 +32,7 @@ if st.session_state.show_instructions:
 2. Upload it here.  
 3. Check your **attendance percentage**.  
 4. Cross check your **cumulative attendance** with the minimum required lectures listed below according to the credit structure.
+5. The uploaded attendance report is processed temporarily in the memory and is not stored. When the page refreshes or the session ends, the file disappears automatically.
 """)
 
     if st.button("Close"):
