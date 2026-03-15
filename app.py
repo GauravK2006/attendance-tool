@@ -39,8 +39,13 @@ if st.session_state.show_instructions:
 
 
 # ---------- HEADER ----------
-st.title("KPMSOL Attendance Calculator")
-st.markdown("---")
+st.markdown(
+    """
+<h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
+<hr style="margin-top:0px; margin-bottom:15px;">
+""",
+    unsafe_allow_html=True
+)
 st.markdown("Created by Gaurav Khopkar")
 
 st.markdown(
