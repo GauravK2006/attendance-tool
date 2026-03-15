@@ -77,7 +77,7 @@ def match_required(subject):
 
 # ---------- INFO ----------
 st.info("""
-*How to use*
+**How to use**
 
 1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
 2. Note SAP only shows attendance updates between **18:00 and 07:00**.
