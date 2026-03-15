@@ -109,7 +109,7 @@ if uploaded_file:
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
     # ---------- GROUP T1 AND U1 ----------
-    result["Base Subject"] = result["Subject"].str.replace(r" (T1|U1).*","",regex=True)
+    result["Base Subject"] = result["Subject"].str.replace(r"\s*T1.*|\s*U1.*","",regex=True)
     result["Type"] = result["Subject"].str.extract(r"(T1|U1)")
 
     result = result.sort_values(by=["Base Subject","Type"])
