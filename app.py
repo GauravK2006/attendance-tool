@@ -31,7 +31,11 @@ st.markdown("Created by Gaurav Khopkar")
 # ---------- LOAD CREDIT STRUCTURE ----------
 credit_df = pd.read_excel("credit structure.xlsx")
 credit_df.columns = credit_df.columns.str.strip()
-credit_df["Subject"] = credit_df["Subject"].str.lower().str.strip()
+
+credit_df["Program"] = credit_df["Program"].str.lower()
+credit_df["Semester"] = credit_df["Semester"].str.lower()
+credit_df["Subject"] = credit_df["Subject"].str.lower()
+
 
 credit_map = dict(
     zip(
@@ -120,6 +124,23 @@ if uploaded_file:
                 break
 
 
+        # ---------- EXTRACT PROGRAM ----------
+        program = ""
+
+        if "b.a., ll.b" in first_page_text.lower():
+            program = "b.a., ll.b.(hons.)"
+
+        if "b.b.a., ll.b" in first_page_text.lower():
+            program = "b.b.a., ll.b.(hons.)"
+
+
+        # ---------- EXTRACT SEMESTER ----------
+        semester_match = re.search(r"semester\s+[ivx]+", first_page_text.lower())
+
+        semester = semester_match.group(0) if semester_match else ""
+
+
+        # ---------- TABLE EXTRACTION ----------
         for page in pdf.pages:
 
             table = page.extract_table()
@@ -130,11 +151,12 @@ if uploaded_file:
 
                     rows.append(row)
 
+
     if len(rows) == 0:
 
         st.error("Invalid file.")
-
         st.stop()
+
 
     df = pd.DataFrame(rows)
 
@@ -189,11 +211,13 @@ if uploaded_file:
         .size()
     )
 
+
     missed_dates = (
         df_calc[df_calc["Attendance"] == "A"]
         .groupby("Subject")["Date"]
         .apply(lambda x: ", ".join(x.astype(str)))
     )
+
 
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
@@ -226,6 +250,7 @@ if uploaded_file:
 
     result["Current Cumulative Attendance"] = combined_attended
 
+
     result["Attendance Percentage"] = (
         combined_attended / combined_conducted * 100
     ).round(2)
@@ -248,6 +273,7 @@ if uploaded_file:
         .astype(object)
     )
 
+
     duplicated = result.duplicated("Base Subject")
 
     result.loc[duplicated, "Current Cumulative Attendance"] = ""
@@ -260,6 +286,7 @@ if uploaded_file:
         "Sr. No.",
         range(1, len(result) + 1)
     )
+
 
     result = result[
         [
@@ -275,17 +302,11 @@ if uploaded_file:
     ]
 
 
-    # ---------- CREDIT TABLE FIX ----------
-    base_subjects = result["Subject"].apply(normalize_subject).unique()
-
+    # ---------- FILTER CREDIT TABLE BY PROGRAM + SEMESTER ----------
     relevant_credit_rows = credit_df[
-        credit_df["Subject"].apply(normalize_subject).isin(base_subjects)
+        (credit_df["Program"] == program) &
+        (credit_df["Semester"] == semester)
     ]
-
-    relevant_credit_rows = relevant_credit_rows.set_index("Subject")
-    relevant_credit_rows = relevant_credit_rows.loc[
-        [s for s in base_subjects if s in relevant_credit_rows.index]
-    ].reset_index()
 
 
     # ---------- PDF GENERATION ----------
@@ -307,7 +328,6 @@ if uploaded_file:
         alignment=1,
         wordWrap="CJK"
     )
-
 
     elements = []
 
