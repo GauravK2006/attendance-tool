@@ -19,10 +19,11 @@ if st.session_state.show_instructions:
     st.info("""
 **How to use**
 
-1. Download your **Detailed Attendance Report** from the SAP Portal.  
-2. Upload it here.  
-3. Check your **attendance percentage**.  
+1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
+2. Note that SAP Portal only works between 18:00 to 07:00. 
+3.. Check your **attendance percentage**.  
 4. Cross check your **cumulative attendance** with the minimum required lectures listed below according to the credit structure.
+5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere. Once the session ends, the file is completely gone.
 """)
 
     if st.button("Close"):
@@ -228,11 +229,11 @@ This page is an independent student-created tool developed by <b>Gaurav Khopkar<
 It is not affiliated with or endorsed by NMIMS, KPMSOL, or the SAP portal, and the official records on SAP shall prevail in case of any discrepancy.
 
 <br>
-
+<p style="font-size:0.85rem; color:gray;">
 For any defects, queries, or suggestions, contact: <b>gauravkhopkar2006@hotmail.com</b>
 
 <br>
-
+<p style="font-size:0.85rem; color:gray;">
 Thank you for using this tool.
 </p>
 """,
