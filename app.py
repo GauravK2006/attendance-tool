@@ -42,7 +42,7 @@ credit_map = dict(
 )
 
 
-# ---------- NORMALIZE SUBJECT ----------
+# ---------- SUBJECT NORMALIZATION ----------
 def normalize_subject(text):
 
     text = text.lower()
@@ -55,7 +55,7 @@ def normalize_subject(text):
     return text.strip()
 
 
-# ---------- SUBJECT MATCHING ----------
+# ---------- SUBJECT MATCH ----------
 matched_subjects = set()
 
 def match_required(subject):
@@ -79,12 +79,12 @@ def match_required(subject):
 st.info("""
 *How to use*
 
-1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
-2. Note SAP only shows attendance updates between **18:00 and 07:00**.
-3. The tool calculates your attendance and displays **required lectures automatically**.
-4. You can download the generated calculation as a .pdf which includes reuired lectures for all your subjects.
-5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere. Once the session ends, the file is completely gone.
+1. Download your *Detailed Attendance Report* from the SAP Portal and upload it here.
+2. SAP only shows attendance updates between *18:00 and 07:00*.
+3. The tool calculates your attendance automatically.
+4. Uploaded files are processed only in memory.
 """)
+
 
 st.markdown(
 '### Upload your Detailed Attendance Report from <a href="https://sdc-sppap1.svkm.ac.in:50001/irj/portal" target="_blank">SAP</a>',
@@ -100,35 +100,64 @@ if uploaded_file:
     rows = []
 
     with pdfplumber.open(uploaded_file) as pdf:
+
         for page in pdf.pages:
 
             table = page.extract_table()
 
             if table:
+
                 for row in table[1:]:
+
                     rows.append(row)
 
     if len(rows) == 0:
+
         st.error("Invalid file.")
+
         st.stop()
 
     df = pd.DataFrame(rows)
 
     df = df[[1, 2, 5]]
-    df.columns = ["Subject", "Date", "Attendance"]
+
+    df.columns = [
+        "Subject",
+        "Date",
+        "Attendance"
+    ]
 
     df = df.dropna()
 
     df["Subject"] = df["Subject"].str.strip()
+
     df["Attendance"] = df["Attendance"].str.strip()
 
 
-    # ---------- NU WARNING ----------
-    if "NU" in df["Attendance"].values:
-        st.warning("Some lectures are marked as Not Updated (NU).")
+    # ---------- NU DETECTION ----------
+    nu_rows = df[df["Attendance"] == "NU"]
+
+    nu_message = None
+
+    if not nu_rows.empty:
+
+        nu_count = len(nu_rows)
+
+        try:
+            nu_date = pd.to_datetime(
+                nu_rows["Date"]
+            ).max().strftime("%d %B")
+
+        except:
+            nu_date = nu_rows["Date"].iloc[0]
+
+        nu_message = f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU)."
+
+        st.warning(nu_message)
 
 
     df_calc = df[df["Attendance"] != "NU"]
+
 
     subjects = df_calc["Subject"].unique()
 
@@ -143,6 +172,7 @@ if uploaded_file:
         .size()
     )
 
+
     missed_dates = (
         df_calc[df_calc["Attendance"] == "A"]
         .groupby("Subject")["Date"]
@@ -151,22 +181,38 @@ if uploaded_file:
 
 
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
+
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
+
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
 
     # ---------- GROUP T1/U1 ----------
     result["Base Subject"] = result["Subject"].str.replace(
-        r"\s*(T\s*1|U\s*1).*", "", regex=True
+        r"\s*(T\s*1|U\s*1).*",
+        "",
+        regex=True
     )
 
-    result["Type"] = result["Subject"].str.extract(r"(T\s*1|U\s*1)")
+    result["Type"] = result["Subject"].str.extract(
+        r"(T\s*1|U\s*1)"
+    )
 
-    result = result.sort_values(by=["Base Subject", "Type"])
+
+    result = result.sort_values(
+        by=["Base Subject", "Type"]
+    )
 
 
-    combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
-    combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
+    combined_conducted = (
+        result.groupby("Base Subject")["Total Lectures Conducted"]
+        .transform("sum")
+    )
+
+    combined_attended = (
+        result.groupby("Base Subject")["Total Lectures Attended"]
+        .transform("sum")
+    )
 
 
     result["Current Cumulative Attendance"] = combined_attended
@@ -178,12 +224,16 @@ if uploaded_file:
 
 
     # ---------- REQUIRED ----------
-    result["Required Cumulative Attendance"] = result["Base Subject"].apply(match_required)
+    result["Required Cumulative Attendance"] = (
+        result["Base Subject"].apply(match_required)
+    )
+
 
     result["Required Cumulative Attendance"] = (
         result["Required Cumulative Attendance"]
         - result["Current Cumulative Attendance"]
     ).clip(lower=0)
+
 
     result["Required Cumulative Attendance"] = (
         result["Required Cumulative Attendance"]
@@ -196,7 +246,9 @@ if uploaded_file:
     duplicated = result.duplicated("Base Subject")
 
     result.loc[duplicated, "Current Cumulative Attendance"] = ""
+
     result.loc[duplicated, "Required Cumulative Attendance"] = ""
+
     result.loc[duplicated, "Attendance Percentage"] = ""
 
 
@@ -254,15 +306,35 @@ if uploaded_file:
     )
 
 
+    elements = []
+
+    elements.append(
+        Paragraph("<b>Attendance Report</b>", styles["Title"])
+    )
+
+    elements.append(Spacer(1, 10))
+
+    if nu_message:
+        elements.append(
+            Paragraph(nu_message, styles["Normal"])
+        )
+        elements.append(Spacer(1, 15))
+
+
     headers = [
         Paragraph(f"<b>{col}</b>", header_style)
         for col in result.columns
     ]
 
+
     table_data = [headers]
 
+
     for row in result.values.tolist():
-        table_data.append([Paragraph(str(x), wrap_style) for x in row])
+
+        table_data.append(
+            [Paragraph(str(v), wrap_style) for v in row]
+        )
 
 
     page_width = landscape(letter)[0] - 80
@@ -296,20 +368,17 @@ if uploaded_file:
     )
 
 
-    elements = []
-
-    elements.append(
-        Paragraph("<b>Attendance Report</b>", styles["Title"])
-    )
-
-    elements.append(Spacer(1, 20))
-
     elements.append(attendance_table)
 
     elements.append(Spacer(1, 30))
 
 
     # ---------- RELEVANT CREDIT STRUCTURE ----------
+    relevant_credit_rows = credit_df[
+        credit_df["Subject"].isin(matched_subjects)
+    ]
+
+
     elements.append(
         Paragraph("<b>Credit Structure</b>", styles["Heading2"])
     )
@@ -317,19 +386,17 @@ if uploaded_file:
     elements.append(Spacer(1, 10))
 
 
-    relevant_credit_rows = credit_df[
-        credit_df["Subject"].isin(matched_subjects)
-    ]
-
-
     credit_headers = [
-        Paragraph(f"<b>{col}</b>", header_style)
-        for col in relevant_credit_rows.columns
+        Paragraph(f"<b>{c}</b>", header_style)
+        for c in relevant_credit_rows.columns
     ]
+
 
     credit_table_data = [credit_headers]
 
+
     for _, row in relevant_credit_rows.iterrows():
+
         credit_table_data.append(
             [Paragraph(str(v), wrap_style) for v in row]
         )
@@ -357,6 +424,7 @@ if uploaded_file:
         pagesize=landscape(letter)
     )
 
+
     pdf.build(elements)
 
     pdf_buffer.seek(0)
@@ -377,12 +445,5 @@ st.markdown("""
 <p style="font-size:0.85rem; color:gray;">
 This page is an independent student-created tool developed by <b>Gaurav Khopkar</b>.
 It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
-<br>
-<p style="font-size:0.85rem; color:gray;">
-For defects or suggestions contact: <b>gauravkhopkar2006@hotmail.com</b>
-
-<br>
-<p style="font-size:0.85rem; color:gray;">
-Thank you for using this tool.
-
+</p>
 """, unsafe_allow_html=True)
