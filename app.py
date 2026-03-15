@@ -142,3 +142,13 @@ credit_data = {
 credit_df = pd.DataFrame(credit_data)
 
 st.table(credit_df)
+import requests
+
+# ---------- PAGE VIEW COUNTER ----------
+try:
+    response = requests.get("https://api.countapi.xyz/hit/kpmsol-attendance-tool/views")
+    views = response.json()["value"]
+    st.markdown("---")
+    st.caption(f"👀 Page Views: {views}")
+except:
+    pass
