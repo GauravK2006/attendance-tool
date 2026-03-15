@@ -159,12 +159,14 @@ if uploaded_file:
     ).round(2)
 
     # ---------- REQUIRED CUMULATIVE ----------
-    result["Required Cumulative Attendance"] = result["Base Subject"].apply(match_required)
+   result["Required Cumulative Attendance"] = (
+    result["Required Cumulative Attendance"] - result["Current Cumulative Attendance"]
+).clip(lower=0)
 
-    result["Required Cumulative Attendance"] = (
-        result["Required Cumulative Attendance"] - result["Current Cumulative Attendance"]
-    ).clip(lower=0).astype("Int64")
+result["Required Cumulative Attendance"] = result["Required Cumulative Attendance"].fillna(0).astype(int)
 
+# allow blanks later for T1/U1 rows
+result["Required Cumulative Attendance"] = result["Required Cumulative Attendance"].astype(object)
     # ---------- OPTION B ----------
     duplicated = result.duplicated("Base Subject")
 
