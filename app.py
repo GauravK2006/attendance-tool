@@ -84,7 +84,7 @@ st.info("""
 4. While this tool provides an accurate estimate, keeping a buffer of 1–2 lectures above the required count is recommended.
 5. You can download the generated calculation as a .pdf which includes required lectures for all your subjects.
 6. The uploaded attendance report is processed temporarily in memory and is not stored anywhere.
-7. As of now, this tool is only **restricted to BALLB Semester I to Semester IV** from the batches 2024-29 and 2025-30.
+7. As of now, this tool is only **restricted to Semester I to Semester IV** from the batches 2024-29 and 2025-30.
 """)
 
 
