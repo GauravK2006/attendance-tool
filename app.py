@@ -35,7 +35,10 @@ credit_df.columns = credit_df.columns.str.strip()
 credit_df["Subject"] = credit_df["Subject"].str.lower().str.strip()
 
 credit_map = dict(
-    zip(credit_df["Subject"], credit_df["Required Cumulative Attendance"])
+    zip(
+        credit_df["Subject"],
+        credit_df["Required Cumulative Attendance"]
+    )
 )
 
 
@@ -52,17 +55,21 @@ def normalize_subject(text):
     return text.strip()
 
 
-# ---------- MATCH SUBJECT ----------
+# ---------- SUBJECT MATCHING ----------
+matched_subjects = set()
+
 def match_required(subject):
 
-    subject = normalize_subject(subject)
+    subject_clean = normalize_subject(subject)
 
-    if subject in credit_map:
-        return credit_map[subject]
+    if subject_clean in credit_map:
+        matched_subjects.add(subject_clean)
+        return credit_map[subject_clean]
 
-    match = get_close_matches(subject, credit_map.keys(), n=1, cutoff=0.45)
+    match = get_close_matches(subject_clean, credit_map.keys(), n=1, cutoff=0.45)
 
     if match:
+        matched_subjects.add(match[0])
         return credit_map[match[0]]
 
     return None
@@ -74,9 +81,8 @@ st.info("""
 
 1. Download your *Detailed Attendance Report* from the SAP Portal and upload it here.
 2. SAP only shows attendance updates between *18:00 and 07:00*.
-3. The tool automatically calculates your *attendance percentage*.
-4. Cross-check your *cumulative attendance* with required lectures.
-5. Uploaded files are processed only in memory.
+3. The tool calculates your attendance automatically.
+4. The uploaded file is processed only in memory.
 """)
 
 st.markdown(
@@ -109,16 +115,15 @@ if uploaded_file:
 
     df = df[[1, 2, 5]]
     df.columns = ["Subject", "Date", "Attendance"]
+
     df = df.dropna()
 
     df["Subject"] = df["Subject"].str.strip()
     df["Attendance"] = df["Attendance"].str.strip()
 
 
-    # ---------- NU ----------
-    nu_rows = df[df["Attendance"] == "NU"]
-
-    if not nu_rows.empty:
+    # ---------- NU WARNING ----------
+    if "NU" in df["Attendance"].values:
         st.warning("Some lectures are marked as Not Updated (NU).")
 
 
@@ -130,7 +135,12 @@ if uploaded_file:
 
 
     conducted = df_calc.groupby("Subject").size()
-    attended = df_calc[df_calc["Attendance"] == "P"].groupby("Subject").size()
+
+    attended = (
+        df_calc[df_calc["Attendance"] == "P"]
+        .groupby("Subject")
+        .size()
+    )
 
     missed_dates = (
         df_calc[df_calc["Attendance"] == "A"]
@@ -170,7 +180,8 @@ if uploaded_file:
     result["Required Cumulative Attendance"] = result["Base Subject"].apply(match_required)
 
     result["Required Cumulative Attendance"] = (
-        result["Required Cumulative Attendance"] - result["Current Cumulative Attendance"]
+        result["Required Cumulative Attendance"]
+        - result["Current Cumulative Attendance"]
     ).clip(lower=0)
 
     result["Required Cumulative Attendance"] = (
@@ -188,7 +199,11 @@ if uploaded_file:
     result.loc[duplicated, "Attendance Percentage"] = ""
 
 
-    result.insert(0, "Sr. No.", range(1, len(result) + 1))
+    result.insert(
+        0,
+        "Sr. No.",
+        range(1, len(result) + 1)
+    )
 
 
     result = result[
@@ -205,38 +220,52 @@ if uploaded_file:
     ]
 
 
-    # ---------- TABLE DISPLAY ----------
+    # ---------- DISPLAY TABLE ----------
     st.dataframe(
         result,
-        height=650,                # restores normal height
+        height=650,
         use_container_width=True,
         hide_index=True,
         column_config={
-            "Dates Missed": st.column_config.TextColumn(width="large")  # prevents cutoff
+            "Dates Missed": st.column_config.TextColumn(width="large")
         }
     )
 
 
-    # ---------- PDF ----------
+    # ---------- PDF GENERATION ----------
     st.markdown("### Download Report")
 
     pdf_buffer = io.BytesIO()
 
     styles = getSampleStyleSheet()
 
-    wrap = ParagraphStyle("wrap", parent=styles["Normal"], wordWrap="CJK")
-    header = ParagraphStyle("header", parent=styles["Normal"], alignment=1, wordWrap="CJK")
+    wrap_style = ParagraphStyle(
+        "wrap",
+        parent=styles["Normal"],
+        wordWrap="CJK"
+    )
+
+    header_style = ParagraphStyle(
+        "header",
+        parent=styles["Normal"],
+        alignment=1,
+        wordWrap="CJK"
+    )
 
 
-    headers = [Paragraph(f"<b>{col}</b>", header) for col in result.columns]
+    headers = [
+        Paragraph(f"<b>{col}</b>", header_style)
+        for col in result.columns
+    ]
 
     table_data = [headers]
 
     for row in result.values.tolist():
-        table_data.append([Paragraph(str(x), wrap) for x in row])
+        table_data.append([Paragraph(str(x), wrap_style) for x in row])
 
 
     page_width = landscape(letter)[0] - 80
+
 
     col_widths = [
         page_width * 0.05,
@@ -268,27 +297,45 @@ if uploaded_file:
 
     elements = []
 
-    elements.append(Paragraph("<b>Attendance Report</b>", styles["Title"]))
+    elements.append(
+        Paragraph("<b>Attendance Report</b>", styles["Title"])
+    )
+
     elements.append(Spacer(1, 20))
+
     elements.append(attendance_table)
+
     elements.append(Spacer(1, 30))
 
 
-    # ---------- CREDIT STRUCTURE FROM EXCEL ----------
-    elements.append(Paragraph("<b>Credit Structure</b>", styles["Heading2"]))
+    # ---------- RELEVANT CREDIT STRUCTURE ----------
+    elements.append(
+        Paragraph("<b>Credit Structure</b>", styles["Heading2"])
+    )
+
     elements.append(Spacer(1, 10))
 
 
-    credit_headers = [Paragraph(f"<b>{c}</b>", header) for c in credit_df.columns]
+    relevant_credit_rows = credit_df[
+        credit_df["Subject"].isin(matched_subjects)
+    ]
 
-    credit_data = [credit_headers]
 
-    for _, row in credit_df.iterrows():
-        credit_data.append([Paragraph(str(v), wrap) for v in row])
+    credit_headers = [
+        Paragraph(f"<b>{col}</b>", header_style)
+        for col in relevant_credit_rows.columns
+    ]
+
+    credit_table_data = [credit_headers]
+
+    for _, row in relevant_credit_rows.iterrows():
+        credit_table_data.append(
+            [Paragraph(str(v), wrap_style) for v in row]
+        )
 
 
     credit_table = Table(
-        credit_data,
+        credit_table_data,
         repeatRows=1
     )
 
