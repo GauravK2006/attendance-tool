@@ -147,31 +147,19 @@ st.table(credit_df)
 import requests
 
 # ---------- UNIQUE USER COUNTER ----------
-
-try:
-
-    if "visitor_id" not in st.session_state:
-        st.session_state.visitor_id = str(uuid.uuid4())
-
-        # increment counter only first time per session
-        requests.get("https://api.countapi.xyz/hit/kpmsol-attendance-tool/visitors")
-
-    response = requests.get("https://api.countapi.xyz/get/kpmsol-attendance-tool/visitors")
-
-    visitors = response.json()["value"]
-
-    st.markdown("---")
-    st.caption(f"👥 Unique Visitors: {visitors}")
-
-except:
-    pass
+# ---------- VISITOR COUNTER ----------
 st.markdown("---")
 
-st.markdown(
-    """
-<div style="text-align:center">
-<img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://attendance-tool-dg39gy3wn9khyzytgaxsfi.streamlit.app&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=Visitors&edge_flat=false"/>
-</div>
-""",
-    unsafe_allow_html=True
-)
+try:
+    namespace = "kpmsol-attendance-tool"
+    key = "visits"
+
+    url = f"https://api.countapi.xyz/hit/{namespace}/{key}"
+    response = requests.get(url).json()
+
+    visitors = response["value"]
+
+    st.caption(f"👥 Visitors: {visitors}")
+
+except:
+    st.caption("👥 Visitors counter unavailable")
