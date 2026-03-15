@@ -82,7 +82,7 @@ st.info("""
 1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
 2. Note that, SAP only shows attendance updates between **18:00 and 07:00**.
 3. The tool calculates your attendance and displays **required lectures automatically**.
-4. You can download the generated calculation as a .pdf which includes reuired lectures for all your subjects.
+4. You can download the generated calculation as a .pdf which includes required lectures for all your subjects.
 5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere. Once the session ends, the file is completely gone.
 6. As of now, this tool is only **restricted to Semester I to Semester IV** from the batches 2024-29 and 2025-30.
 """)
