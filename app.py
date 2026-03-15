@@ -42,7 +42,7 @@ credit_map = dict(
 )
 
 
-# ---------- SUBJECT NORMALIZATION ----------
+# ---------- NORMALIZE SUBJECT ----------
 def normalize_subject(text):
 
     text = text.lower()
@@ -101,6 +101,21 @@ if uploaded_file:
 
     with pdfplumber.open(uploaded_file) as pdf:
 
+        # ---------- STUDENT NAME EXTRACTION ----------
+        student_name = "Student Name Not Found"
+
+        first_page_text = pdf.pages[0].extract_text()
+
+        for line in first_page_text.split("\n"):
+
+            if "Name" in line:
+
+                student_name = line.strip()
+
+                break
+
+
+        # ---------- TABLE EXTRACTION ----------
         for page in pdf.pages:
 
             table = page.extract_table()
@@ -314,10 +329,18 @@ if uploaded_file:
 
     elements.append(Spacer(1, 10))
 
+    elements.append(
+        Paragraph(student_name, styles["Normal"])
+    )
+
+    elements.append(Spacer(1, 10))
+
     if nu_message:
+
         elements.append(
             Paragraph(nu_message, styles["Normal"])
         )
+
         elements.append(Spacer(1, 15))
 
 
