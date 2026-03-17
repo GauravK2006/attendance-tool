@@ -38,14 +38,6 @@ credit_df["Semester"] = credit_df["Semester"].str.lower()
 credit_df["Subject"] = credit_df["Subject"].str.lower()
 
 
-credit_map = dict(
-    zip(
-        credit_df["Subject"],
-        credit_df["Required Cumulative Attendance"]
-    )
-)
-
-
 # ---------- NORMALIZE SUBJECT ----------
 def normalize_subject(text):
 
@@ -57,6 +49,48 @@ def normalize_subject(text):
     text = re.sub(r'^the\s+', '', text)
 
     return text.strip()
+
+
+# ---------- INFO ----------
+st.info("""
+**How to use**
+
+1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
+2. Note that SAP only shows attendance updates between **18:00 and 07:00**.
+3. The tool calculates your attendance and displays **required lectures automatically**.
+4. You can download the generated calculation as a .pdf which includes required lectures for all your subjects.
+5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere.
+6. As of now, this tool is only **restricted to BALLB Semester I to Semester IV** from the batches 2024-29 and 2025-30.
+""")
+
+
+st.markdown(
+'### Upload your Detailed Attendance Report from <a href="https://sdc-sppap1.svkm.ac.in:50001/irj/portal" target="_blank">SAP</a>',
+unsafe_allow_html=True
+)
+
+uploaded_file = st.file_uploader("Upload File", type="pdf")
+
+
+# ---------- TARGET SELECT (ADDED) ----------
+target_percentage = st.radio(
+    "Select Required Attendance %",
+    [70, 75, 80],
+    horizontal=True
+)
+
+
+# ---------- BUILD CREDIT MAP (MODIFIED) ----------
+def build_credit_map(target):
+    return dict(
+        zip(
+            credit_df["Subject"],
+            credit_df[str(target)]
+        )
+    )
+
+
+credit_map = build_credit_map(target_percentage)
 
 
 # ---------- SUBJECT MATCH ----------
@@ -73,28 +107,6 @@ def match_required(subject):
         return credit_map[match[0]]
 
     return None
-
-
-# ---------- INFO ----------
-st.info("""
-**How to use**
-
-1. Download your **Detailed Attendance Report** from the SAP Portal and upload it here.
-2. Note that SAP only shows attendance updates between **18:00 and 07:00**.
-3. The tool calculates your attendance and displays **required lectures automatically**.
-4. While this tool provides an accurate estimate, keeping a buffer of 1–2 lectures above the required count is recommended.
-5. You can download the generated calculation as a .pdf which includes required lectures for all your subjects.
-6. The uploaded attendance report is processed temporarily in memory and is not stored anywhere.
-7. As of now, this tool is only **restricted to Semester I to Semester IV** from the batches 2024-29 and 2025-30.
-""")
-
-
-st.markdown(
-'### Upload your Detailed Attendance Report from <a href="https://sdc-sppap1.svkm.ac.in:50001/irj/portal" target="_blank">SAP</a>',
-unsafe_allow_html=True
-)
-
-uploaded_file = st.file_uploader("Upload File", type="pdf")
 
 
 # ---------- PROCESS FILE ----------
@@ -304,11 +316,14 @@ if uploaded_file:
     ]
 
 
-    # ---------- FILTER CREDIT TABLE BY PROGRAM + SEMESTER ----------
+    # ---------- FILTER CREDIT TABLE ----------
     relevant_credit_rows = credit_df[
         (credit_df["Program"] == program) &
         (credit_df["Semester"] == semester)
-    ]
+    ].copy()
+
+    # apply selected column
+    relevant_credit_rows["Required Cumulative Attendance"] = relevant_credit_rows[str(target_percentage)]
 
 
     # ---------- PDF GENERATION ----------
@@ -408,9 +423,16 @@ if uploaded_file:
 
 
     # ---------- CREDIT STRUCTURE TABLE ----------
+    credit_columns = [
+        "Program",
+        "Semester",
+        "Subject",
+        "Required Cumulative Attendance"
+    ]
+
     credit_headers = [
         Paragraph(f"<b>{c}</b>", header_style)
-        for c in relevant_credit_rows.columns
+        for c in credit_columns
     ]
 
     credit_data = [credit_headers]
@@ -418,7 +440,7 @@ if uploaded_file:
     for _, row in relevant_credit_rows.iterrows():
 
         credit_data.append(
-            [Paragraph(str(v), wrap_style) for v in row]
+            [Paragraph(str(row[col]), wrap_style) for col in credit_columns]
         )
 
     credit_table = Table(
