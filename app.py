@@ -96,8 +96,7 @@ def build_credit_map(target):
         75: "Required Cumulative Attendance (75%)",
         80: "Required Cumulative Attendance (80%)"
     }
-    col = column_map[target]
-    return dict(zip(credit_df["Subject"], credit_df[col]))
+    return dict(zip(credit_df["Subject"], credit_df[column_map[target]]))
 
 
 credit_map = build_credit_map(target_percentage)
@@ -106,16 +105,10 @@ credit_map = build_credit_map(target_percentage)
 # ---------- SUBJECT MATCH ----------
 def match_required(subject):
     subject_clean = normalize_subject(subject)
-
     if subject_clean in credit_map:
         return credit_map[subject_clean]
-
     match = get_close_matches(subject_clean, credit_map.keys(), n=1, cutoff=0.45)
-
-    if match:
-        return credit_map[match[0]]
-
-    return None
+    return credit_map[match[0]] if match else None
 
 
 # ---------- PROCESS FILE ----------
@@ -170,120 +163,33 @@ if uploaded_file and generate:
     df["Subject"] = df["Subject"].str.strip()
     df["Attendance"] = df["Attendance"].str.strip()
 
-
-    # ---------- NU DETECTION ----------
-    nu_rows = df[df["Attendance"] == "NU"]
-
-    nu_message = None
-
-    if not nu_rows.empty:
-        nu_count = len(nu_rows)
-
-        try:
-            nu_date = pd.to_datetime(nu_rows["Date"]).max().strftime("%d %B")
-        except:
-            nu_date = nu_rows["Date"].iloc[0]
-
-        nu_message = f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU)."
-
-        st.warning(nu_message)
-
-
     df_calc = df[df["Attendance"] != "NU"]
 
     subjects = df_calc["Subject"].unique()
-
     result = pd.DataFrame({"Subject": subjects})
 
     conducted = df_calc.groupby("Subject").size()
-
-    attended = (
-        df_calc[df_calc["Attendance"] == "P"]
-        .groupby("Subject")
-        .size()
-    )
-
-    missed_dates = (
-        df_calc[df_calc["Attendance"] == "A"]
-        .groupby("Subject")["Date"]
-        .apply(lambda x: ", ".join(x.astype(str)))
-    )
+    attended = df_calc[df_calc["Attendance"] == "P"].groupby("Subject").size()
 
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
-    result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
+    result["Base Subject"] = result["Subject"].str.replace(r"\s*(T\s*1|U\s*1).*", "", regex=True)
 
-    # ---------- GROUP ----------
-    result["Base Subject"] = result["Subject"].str.replace(
-        r"\s*(T\s*1|U\s*1).*",
-        "",
-        regex=True
-    )
-
-    result = result.sort_values(by=["Base Subject"])
-
-    combined_conducted = (
-        result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
-    )
-
-    combined_attended = (
-        result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
-    )
+    combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
+    combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
     result["Current Cumulative Attendance"] = combined_attended
+    result["Attendance Percentage"] = (combined_attended / combined_conducted * 100).round(2)
 
-    result["Attendance Percentage"] = (
-        combined_attended / combined_conducted * 100
-    ).round(2)
-
-
-    # ---------- REQUIRED ----------
+    result["Required Cumulative Attendance"] = result["Base Subject"].apply(match_required)
     result["Required Cumulative Attendance"] = (
-        result["Base Subject"].apply(match_required)
-    )
-
-    result["Required Cumulative Attendance"] = (
-        result["Required Cumulative Attendance"]
-        - result["Current Cumulative Attendance"]
+        result["Required Cumulative Attendance"] - result["Current Cumulative Attendance"]
     ).clip(lower=0)
 
+    # ---------- FINAL COLUMNS ----------
+    result.insert(0, "Sr. No.", range(1, len(result) + 1))
 
-    # ---------- MERGE CREDIT ----------
-    credit_filtered = credit_df[
-        (credit_df["Program"] == program) &
-        (credit_df["Semester"] == semester)
-    ]
-
-    result = result.merge(
-        credit_filtered[["Subject", "Total Lectures (T1)", "Total Tutorials (U1)"]],
-        left_on="Base Subject",
-        right_on="Subject",
-        how="left"
-    )
-
-    result["Total Possible"] = result["Total Lectures (T1)"].fillna(0) + result["Total Tutorials (U1)"].fillna(0)
-
-    result["Remaining Lectures"] = result["Total Possible"] - combined_conducted
-
-
-    def calc_missable(row):
-        required_total = row["Required Cumulative Attendance"] + row["Current Cumulative Attendance"]
-
-        if row["Current Cumulative Attendance"] >= required_total:
-            return "Criteria Fulfilled"
-
-        if row["Required Cumulative Attendance"] > row["Remaining Lectures"]:
-            return "All lectures are mandatory"
-
-        val = int(row["Remaining Lectures"] - row["Required Cumulative Attendance"])
-        return val
-
-
-    result["Lectures That Can Be Missed"] = result.apply(calc_missable, axis=1)
-
-
-    # ---------- FINAL DISPLAY ----------
     final_cols = [
         "Sr. No.",
         "Subject",
@@ -291,31 +197,27 @@ if uploaded_file and generate:
         "Required Cumulative Attendance"
     ]
 
-    result.insert(0, "Sr. No.", range(1, len(result) + 1))
-
     if opt_conducted:
         final_cols.append("Total Lectures Conducted")
 
     if opt_attended:
         final_cols.append("Total Lectures Attended")
 
-    if opt_dates:
+    if opt_dates and "Dates Missed" in result.columns:
         final_cols.append("Dates Missed")
 
-    if opt_remaining:
+    if opt_remaining and "Remaining Lectures" in result.columns:
         final_cols.append("Remaining Lectures")
 
-    if opt_missable:
+    if opt_missable and "Lectures That Can Be Missed" in result.columns:
         final_cols.append("Lectures That Can Be Missed")
 
-    display_df = result[final_cols]
-
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    # ✅ SAFE COLUMN FILTER
+    existing_cols = [col for col in final_cols if col in result.columns]
+    display_df = result[existing_cols]
 
 
     # ---------- PDF ----------
-    st.markdown("### Download Report")
-
     pdf_buffer = io.BytesIO()
     styles = getSampleStyleSheet()
 
@@ -360,11 +262,24 @@ if uploaded_file and generate:
 
     pdf_buffer.seek(0)
 
+
+    # ✅ DOWNLOAD BUTTON POSITION FIXED
+    st.markdown("### Download Report")
+
     st.download_button(
         label="Download as PDF",
         data=pdf_buffer,
         file_name="attendance_report.pdf",
         mime="application/pdf"
+    )
+
+
+    # ---------- DISPLAY ----------
+    st.dataframe(
+        display_df,
+        height=650,
+        use_container_width=True,
+        hide_index=True
     )
 
 
