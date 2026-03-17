@@ -79,6 +79,16 @@ target_percentage = st.radio(
 generate = st.button("Generate Report")
 
 
+# ---------- OPTIONAL COLUMNS ----------
+st.markdown("### Select Optional Columns")
+
+opt_conducted = st.checkbox("Total Lectures Conducted")
+opt_attended = st.checkbox("Total Lectures Attended")
+opt_dates = st.checkbox("Dates Missed")
+opt_remaining = st.checkbox("Remaining Lectures")
+opt_missable = st.checkbox("Lectures That Can Be Missed")
+
+
 # ---------- BUILD CREDIT MAP ----------
 def build_credit_map(target):
     column_map = {
@@ -160,26 +170,38 @@ if uploaded_file and generate:
     df["Subject"] = df["Subject"].str.strip()
     df["Attendance"] = df["Attendance"].str.strip()
 
+
+    # ---------- NU DETECTION ----------
     nu_rows = df[df["Attendance"] == "NU"]
+
     nu_message = None
 
     if not nu_rows.empty:
         nu_count = len(nu_rows)
+
         try:
             nu_date = pd.to_datetime(nu_rows["Date"]).max().strftime("%d %B")
         except:
             nu_date = nu_rows["Date"].iloc[0]
 
         nu_message = f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU)."
+
         st.warning(nu_message)
+
 
     df_calc = df[df["Attendance"] != "NU"]
 
     subjects = df_calc["Subject"].unique()
+
     result = pd.DataFrame({"Subject": subjects})
 
     conducted = df_calc.groupby("Subject").size()
-    attended = df_calc[df_calc["Attendance"] == "P"].groupby("Subject").size()
+
+    attended = (
+        df_calc[df_calc["Attendance"] == "P"]
+        .groupby("Subject")
+        .size()
+    )
 
     missed_dates = (
         df_calc[df_calc["Attendance"] == "A"]
@@ -191,15 +213,23 @@ if uploaded_file and generate:
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
+
+    # ---------- GROUP ----------
     result["Base Subject"] = result["Subject"].str.replace(
-        r"\s*(T\s*1|U\s*1).*", "", regex=True
+        r"\s*(T\s*1|U\s*1).*",
+        "",
+        regex=True
     )
 
-    result["Type"] = result["Subject"].str.extract(r"(T\s*1|U\s*1)")
-    result = result.sort_values(by=["Base Subject", "Type"])
+    result = result.sort_values(by=["Base Subject"])
 
-    combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
-    combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
+    combined_conducted = (
+        result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
+    )
+
+    combined_attended = (
+        result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
+    )
 
     result["Current Cumulative Attendance"] = combined_attended
 
@@ -207,6 +237,8 @@ if uploaded_file and generate:
         combined_attended / combined_conducted * 100
     ).round(2)
 
+
+    # ---------- REQUIRED ----------
     result["Required Cumulative Attendance"] = (
         result["Base Subject"].apply(match_required)
     )
@@ -216,46 +248,69 @@ if uploaded_file and generate:
         - result["Current Cumulative Attendance"]
     ).clip(lower=0)
 
-    result["Required Cumulative Attendance"] = (
-        result["Required Cumulative Attendance"]
-        .fillna(0)
-        .astype(int)
-        .astype(object)
+
+    # ---------- MERGE CREDIT ----------
+    credit_filtered = credit_df[
+        (credit_df["Program"] == program) &
+        (credit_df["Semester"] == semester)
+    ]
+
+    result = result.merge(
+        credit_filtered[["Subject", "Total Lectures (T1)", "Total Tutorials (U1)"]],
+        left_on="Base Subject",
+        right_on="Subject",
+        how="left"
     )
 
-    duplicated = result.duplicated("Base Subject")
+    result["Total Possible"] = result["Total Lectures (T1)"].fillna(0) + result["Total Tutorials (U1)"].fillna(0)
 
-    result.loc[duplicated, "Current Cumulative Attendance"] = ""
-    result.loc[duplicated, "Required Cumulative Attendance"] = ""
-    result.loc[duplicated, "Attendance Percentage"] = ""
+    result["Remaining Lectures"] = result["Total Possible"] - combined_conducted
+
+
+    def calc_missable(row):
+        required_total = row["Required Cumulative Attendance"] + row["Current Cumulative Attendance"]
+
+        if row["Current Cumulative Attendance"] >= required_total:
+            return "Criteria Fulfilled"
+
+        if row["Required Cumulative Attendance"] > row["Remaining Lectures"]:
+            return "All lectures are mandatory"
+
+        val = int(row["Remaining Lectures"] - row["Required Cumulative Attendance"])
+        return val
+
+
+    result["Lectures That Can Be Missed"] = result.apply(calc_missable, axis=1)
+
+
+    # ---------- FINAL DISPLAY ----------
+    final_cols = [
+        "Sr. No.",
+        "Subject",
+        "Attendance Percentage",
+        "Required Cumulative Attendance"
+    ]
 
     result.insert(0, "Sr. No.", range(1, len(result) + 1))
 
-    result = result[
-        [
-            "Sr. No.",
-            "Subject",
-            "Total Lectures Conducted",
-            "Total Lectures Attended",
-            "Current Cumulative Attendance",
-            "Attendance Percentage",
-            "Required Cumulative Attendance",
-            "Dates Missed"
-        ]
-    ]
+    if opt_conducted:
+        final_cols.append("Total Lectures Conducted")
 
-    relevant_credit_rows = credit_df[
-        (credit_df["Program"] == program) &
-        (credit_df["Semester"] == semester)
-    ].copy()
+    if opt_attended:
+        final_cols.append("Total Lectures Attended")
 
-    col = {
-        70: "Required Cumulative Attendance (70%)",
-        75: "Required Cumulative Attendance (75%)",
-        80: "Required Cumulative Attendance (80%)"
-    }[target_percentage]
+    if opt_dates:
+        final_cols.append("Dates Missed")
 
-    relevant_credit_rows["Required Cumulative Attendance"] = relevant_credit_rows[col]
+    if opt_remaining:
+        final_cols.append("Remaining Lectures")
+
+    if opt_missable:
+        final_cols.append("Lectures That Can Be Missed")
+
+    display_df = result[final_cols]
+
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 
     # ---------- PDF ----------
@@ -263,9 +318,6 @@ if uploaded_file and generate:
 
     pdf_buffer = io.BytesIO()
     styles = getSampleStyleSheet()
-
-    wrap_style = ParagraphStyle("wrap", parent=styles["Normal"], wordWrap="CJK")
-    header_style = ParagraphStyle("header", parent=styles["Normal"], alignment=1, wordWrap="CJK")
 
     elements = []
 
@@ -278,7 +330,6 @@ if uploaded_file and generate:
         elements.append(Paragraph(report_duration, styles["Normal"]))
         elements.append(Spacer(1, 5))
 
-        # ✅ ADDED LINE
         elements.append(
             Paragraph(
                 f"This Report has been calculated based on {target_percentage}% chosen criteria.",
@@ -288,77 +339,21 @@ if uploaded_file and generate:
 
         elements.append(Spacer(1, 10))
 
-    if nu_message:
-        elements.append(Paragraph(nu_message, styles["Normal"]))
-        elements.append(Spacer(1, 15))
-
-    headers = [Paragraph(f"<b>{col}</b>", header_style) for col in result.columns]
-    table_data = [headers]
-
-    for row in result.values.tolist():
-        table_data.append([Paragraph(str(v), wrap_style) for v in row])
+    table_data = [display_df.columns.tolist()] + display_df.values.tolist()
 
     page_width = landscape(letter)[0] - 80
+    col_width = page_width / len(display_df.columns)
 
-    col_widths = [
-        page_width * 0.05,
-        page_width * 0.22,
-        page_width * 0.11,
-        page_width * 0.11,
-        page_width * 0.14,
-        page_width * 0.12,
-        page_width * 0.14,
-        page_width * 0.20
-    ]
+    table = Table(table_data, colWidths=[col_width]*len(display_df.columns))
 
-    attendance_table = Table(table_data, colWidths=col_widths, repeatRows=1)
-
-    attendance_table.setStyle(
-        TableStyle([
-            ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-            ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-            ("VALIGN", (0,0), (-1,-1), "MIDDLE")
-        ])
-    )
-
-    elements.append(attendance_table)
-    elements.append(Spacer(1, 30))
-
-
-    # ---------- CREDIT TABLE (FILTERED COLUMNS) ----------
-    credit_columns = [
-        "Program",
-        "Semester",
-        "Subject",
-        "Credits",
-        "Required Cumulative Attendance"
-    ]
-
-    credit_headers = [
-        Paragraph(f"<b>{c}</b>", header_style)
-        for c in credit_columns
-    ]
-
-    credit_data = [credit_headers]
-
-    for _, row in relevant_credit_rows.iterrows():
-        credit_data.append(
-            [Paragraph(str(row[c]), wrap_style) for c in credit_columns]
-        )
-
-    credit_table = Table(
-        credit_data,
-        repeatRows=1
-    )
-
-    credit_table.setStyle(
+    table.setStyle(
         TableStyle([
             ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
             ("BACKGROUND", (0,0), (-1,0), colors.lightgrey)
         ])
     )
 
-    elements.append(credit_table)
+    elements.append(table)
 
     pdf = SimpleDocTemplate(pdf_buffer, pagesize=landscape(letter))
     pdf.build(elements)
@@ -372,16 +367,6 @@ if uploaded_file and generate:
         mime="application/pdf"
     )
 
-    st.dataframe(
-        result,
-        height=650,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Dates Missed": st.column_config.TextColumn(width="large")
-        }
-    )
-
 
 # ---------- FOOTER ----------
 st.markdown("---")
@@ -393,7 +378,6 @@ It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
 <br>
 <p style="font-size:0.85rem; color:gray;">
 For queries or suggestions or any defects on this page, contact: <b>gauravkhopkar2006@hotmail.com</b>
-
 <br>
 <p style="font-size:0.85rem; color:gray;">
 Thank you for using this tool.
