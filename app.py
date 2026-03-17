@@ -76,21 +76,17 @@ target_percentage = st.radio(
     horizontal=True
 )
 
-# ---------- GENERATE BUTTON ----------
 generate = st.button("Generate Report")
 
 
 # ---------- BUILD CREDIT MAP ----------
 def build_credit_map(target):
-
     column_map = {
         70: "Required Cumulative Attendance (70%)",
         75: "Required Cumulative Attendance (75%)",
         80: "Required Cumulative Attendance (80%)"
     }
-
     col = column_map[target]
-
     return dict(zip(credit_df["Subject"], credit_df[col]))
 
 
@@ -99,7 +95,6 @@ credit_map = build_credit_map(target_percentage)
 
 # ---------- SUBJECT MATCH ----------
 def match_required(subject):
-
     subject_clean = normalize_subject(subject)
 
     if subject_clean in credit_map:
@@ -281,6 +276,16 @@ if uploaded_file and generate:
 
     if report_duration:
         elements.append(Paragraph(report_duration, styles["Normal"]))
+        elements.append(Spacer(1, 5))
+
+        # ✅ ADDED LINE
+        elements.append(
+            Paragraph(
+                f"This Report has been calculated based on {target_percentage}% chosen criteria.",
+                styles["Normal"]
+            )
+        )
+
         elements.append(Spacer(1, 10))
 
     if nu_message:
@@ -320,17 +325,25 @@ if uploaded_file and generate:
     elements.append(Spacer(1, 30))
 
 
-    # ---------- CREDIT TABLE (ALL ORIGINAL COLUMNS RESTORED) ----------
+    # ---------- CREDIT TABLE (FILTERED COLUMNS) ----------
+    credit_columns = [
+        "Program",
+        "Semester",
+        "Subject",
+        "Credits",
+        "Required Cumulative Attendance"
+    ]
+
     credit_headers = [
         Paragraph(f"<b>{c}</b>", header_style)
-        for c in relevant_credit_rows.columns
+        for c in credit_columns
     ]
 
     credit_data = [credit_headers]
 
     for _, row in relevant_credit_rows.iterrows():
         credit_data.append(
-            [Paragraph(str(v), wrap_style) for v in row]
+            [Paragraph(str(row[c]), wrap_style) for c in credit_columns]
         )
 
     credit_table = Table(
