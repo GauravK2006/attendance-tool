@@ -40,14 +40,11 @@ credit_df["Subject"] = credit_df["Subject"].str.lower()
 
 # ---------- NORMALIZE SUBJECT ----------
 def normalize_subject(text):
-
     text = text.lower()
-
     text = re.sub(r'\b(t1|u1)\b', '', text)
     text = re.sub(r'-\s*div.*', '', text)
     text = re.sub(r',\d+', '', text)
     text = re.sub(r'^the\s+', '', text)
-
     return text.strip()
 
 
@@ -72,22 +69,29 @@ unsafe_allow_html=True
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
 
-# ---------- TARGET SELECT (ADDED) ----------
+# ---------- TARGET SELECT ----------
 target_percentage = st.radio(
     "Select Required Attendance %",
     [70, 75, 80],
     horizontal=True
 )
 
+# ---------- GENERATE BUTTON ----------
+generate = st.button("Generate Report")
 
-# ---------- BUILD CREDIT MAP (MODIFIED) ----------
+
+# ---------- BUILD CREDIT MAP (FIXED FOR YOUR EXCEL) ----------
 def build_credit_map(target):
-    return dict(
-        zip(
-            credit_df["Subject"],
-            credit_df[str(target)]
-        )
-    )
+
+    column_map = {
+        70: "Required Cumulative Attendance (70%)",
+        75: "Required Cumulative Attendance (75%)",
+        80: "Required Cumulative Attendance (80%)"
+    }
+
+    col = column_map[target]
+
+    return dict(zip(credit_df["Subject"], credit_df[col]))
 
 
 credit_map = build_credit_map(target_percentage)
@@ -110,7 +114,7 @@ def match_required(subject):
 
 
 # ---------- PROCESS FILE ----------
-if uploaded_file:
+if uploaded_file and generate:
 
     rows = []
 
@@ -121,24 +125,17 @@ if uploaded_file:
         student_name = "Student Name Not Found"
 
         for line in first_page_text.split("\n"):
-
             if "Name" in line:
-
                 student_name = line.strip()
                 break
-
 
         report_duration = ""
 
         for line in first_page_text.split("\n"):
-
             if "Attendance Report Duration" in line:
-
                 report_duration = line.strip()
                 break
 
-
-        # ---------- EXTRACT PROGRAM ----------
         program = ""
 
         if "b.a., ll.b" in first_page_text.lower():
@@ -147,84 +144,47 @@ if uploaded_file:
         if "b.b.a., ll.b" in first_page_text.lower():
             program = "b.b.a., ll.b.(hons.)"
 
-
-        # ---------- EXTRACT SEMESTER ----------
         semester_match = re.search(r"semester\s+[ivx]+", first_page_text.lower())
-
         semester = semester_match.group(0) if semester_match else ""
 
-
-        # ---------- TABLE EXTRACTION ----------
         for page in pdf.pages:
-
             table = page.extract_table()
-
             if table:
-
                 for row in table[1:]:
-
                     rows.append(row)
 
-
     if len(rows) == 0:
-
         st.error("Invalid file.")
         st.stop()
 
-
     df = pd.DataFrame(rows)
-
     df = df[[1, 2, 5]]
-
-    df.columns = [
-        "Subject",
-        "Date",
-        "Attendance"
-    ]
-
+    df.columns = ["Subject", "Date", "Attendance"]
     df = df.dropna()
 
     df["Subject"] = df["Subject"].str.strip()
     df["Attendance"] = df["Attendance"].str.strip()
 
-
-    # ---------- NU DETECTION ----------
     nu_rows = df[df["Attendance"] == "NU"]
-
     nu_message = None
 
     if not nu_rows.empty:
-
         nu_count = len(nu_rows)
-
         try:
-            nu_date = pd.to_datetime(
-                nu_rows["Date"]
-            ).max().strftime("%d %B")
-
+            nu_date = pd.to_datetime(nu_rows["Date"]).max().strftime("%d %B")
         except:
             nu_date = nu_rows["Date"].iloc[0]
 
         nu_message = f"{nu_count} lecture(s) from {nu_date} are marked as Not Updated (NU)."
-
         st.warning(nu_message)
-
 
     df_calc = df[df["Attendance"] != "NU"]
 
     subjects = df_calc["Subject"].unique()
-
     result = pd.DataFrame({"Subject": subjects})
 
-
     conducted = df_calc.groupby("Subject").size()
-
-    attended = (
-        df_calc[df_calc["Attendance"] == "P"]
-        .groupby("Subject")
-        .size()
-    )
-
+    attended = df_calc[df_calc["Attendance"] == "P"].groupby("Subject").size()
 
     missed_dates = (
         df_calc[df_calc["Attendance"] == "A"]
@@ -232,45 +192,26 @@ if uploaded_file:
         .apply(lambda x: ", ".join(x.astype(str)))
     )
 
-
     result["Total Lectures Conducted"] = result["Subject"].map(conducted).fillna(0)
     result["Total Lectures Attended"] = result["Subject"].map(attended).fillna(0)
     result["Dates Missed"] = result["Subject"].map(missed_dates).fillna("")
 
-
-    # ---------- GROUP T1/U1 ----------
     result["Base Subject"] = result["Subject"].str.replace(
-        r"\s*(T\s*1|U\s*1).*",
-        "",
-        regex=True
+        r"\s*(T\s*1|U\s*1).*", "", regex=True
     )
 
-    result["Type"] = result["Subject"].str.extract(
-        r"(T\s*1|U\s*1)"
-    )
-
+    result["Type"] = result["Subject"].str.extract(r"(T\s*1|U\s*1)")
     result = result.sort_values(by=["Base Subject", "Type"])
 
-
-    combined_conducted = (
-        result.groupby("Base Subject")["Total Lectures Conducted"]
-        .transform("sum")
-    )
-
-    combined_attended = (
-        result.groupby("Base Subject")["Total Lectures Attended"]
-        .transform("sum")
-    )
+    combined_conducted = result.groupby("Base Subject")["Total Lectures Conducted"].transform("sum")
+    combined_attended = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
 
     result["Current Cumulative Attendance"] = combined_attended
-
 
     result["Attendance Percentage"] = (
         combined_attended / combined_conducted * 100
     ).round(2)
 
-
-    # ---------- REQUIRED ----------
     result["Required Cumulative Attendance"] = (
         result["Base Subject"].apply(match_required)
     )
@@ -287,20 +228,13 @@ if uploaded_file:
         .astype(object)
     )
 
-
     duplicated = result.duplicated("Base Subject")
 
     result.loc[duplicated, "Current Cumulative Attendance"] = ""
     result.loc[duplicated, "Required Cumulative Attendance"] = ""
     result.loc[duplicated, "Attendance Percentage"] = ""
 
-
-    result.insert(
-        0,
-        "Sr. No.",
-        range(1, len(result) + 1)
-    )
-
+    result.insert(0, "Sr. No.", range(1, len(result) + 1))
 
     result = result[
         [
@@ -315,80 +249,49 @@ if uploaded_file:
         ]
     ]
 
-
-    # ---------- FILTER CREDIT TABLE ----------
     relevant_credit_rows = credit_df[
         (credit_df["Program"] == program) &
         (credit_df["Semester"] == semester)
     ].copy()
 
-    # apply selected column
-    relevant_credit_rows["Required Cumulative Attendance"] = relevant_credit_rows[str(target_percentage)]
+    col = {
+        70: "Required Cumulative Attendance (70%)",
+        75: "Required Cumulative Attendance (75%)",
+        80: "Required Cumulative Attendance (80%)"
+    }[target_percentage]
+
+    relevant_credit_rows["Required Cumulative Attendance"] = relevant_credit_rows[col]
 
 
-    # ---------- PDF GENERATION ----------
+    # ---------- PDF ----------
     st.markdown("### Download Report")
 
     pdf_buffer = io.BytesIO()
-
     styles = getSampleStyleSheet()
 
-    wrap_style = ParagraphStyle(
-        "wrap",
-        parent=styles["Normal"],
-        wordWrap="CJK"
-    )
-
-    header_style = ParagraphStyle(
-        "header",
-        parent=styles["Normal"],
-        alignment=1,
-        wordWrap="CJK"
-    )
+    wrap_style = ParagraphStyle("wrap", parent=styles["Normal"], wordWrap="CJK")
+    header_style = ParagraphStyle("header", parent=styles["Normal"], alignment=1, wordWrap="CJK")
 
     elements = []
 
-    elements.append(
-        Paragraph("<b>Attendance Report</b>", styles["Title"])
-    )
-
+    elements.append(Paragraph("<b>Attendance Report</b>", styles["Title"]))
     elements.append(Spacer(1, 10))
-
-    elements.append(
-        Paragraph(student_name, styles["Normal"])
-    )
-
+    elements.append(Paragraph(student_name, styles["Normal"]))
     elements.append(Spacer(1, 5))
 
     if report_duration:
-
-        elements.append(
-            Paragraph(report_duration, styles["Normal"])
-        )
-
+        elements.append(Paragraph(report_duration, styles["Normal"]))
         elements.append(Spacer(1, 10))
 
     if nu_message:
-
-        elements.append(
-            Paragraph(nu_message, styles["Normal"])
-        )
-
+        elements.append(Paragraph(nu_message, styles["Normal"]))
         elements.append(Spacer(1, 15))
 
-
-    headers = [
-        Paragraph(f"<b>{col}</b>", header_style)
-        for col in result.columns
-    ]
-
+    headers = [Paragraph(f"<b>{col}</b>", header_style) for col in result.columns]
     table_data = [headers]
 
     for row in result.values.tolist():
-
-        table_data.append(
-            [Paragraph(str(v), wrap_style) for v in row]
-        )
+        table_data.append([Paragraph(str(v), wrap_style) for v in row])
 
     page_width = landscape(letter)[0] - 80
 
@@ -403,11 +306,7 @@ if uploaded_file:
         page_width * 0.20
     ]
 
-    attendance_table = Table(
-        table_data,
-        colWidths=col_widths,
-        repeatRows=1
-    )
+    attendance_table = Table(table_data, colWidths=col_widths, repeatRows=1)
 
     attendance_table.setStyle(
         TableStyle([
@@ -418,35 +317,17 @@ if uploaded_file:
     )
 
     elements.append(attendance_table)
-
     elements.append(Spacer(1, 30))
 
+    credit_columns = ["Program", "Semester", "Subject", "Required Cumulative Attendance"]
 
-    # ---------- CREDIT STRUCTURE TABLE ----------
-    credit_columns = [
-        "Program",
-        "Semester",
-        "Subject",
-        "Required Cumulative Attendance"
-    ]
-
-    credit_headers = [
-        Paragraph(f"<b>{c}</b>", header_style)
-        for c in credit_columns
-    ]
-
+    credit_headers = [Paragraph(f"<b>{c}</b>", header_style) for c in credit_columns]
     credit_data = [credit_headers]
 
     for _, row in relevant_credit_rows.iterrows():
+        credit_data.append([Paragraph(str(row[col]), wrap_style) for col in credit_columns])
 
-        credit_data.append(
-            [Paragraph(str(row[col]), wrap_style) for col in credit_columns]
-        )
-
-    credit_table = Table(
-        credit_data,
-        repeatRows=1
-    )
+    credit_table = Table(credit_data, repeatRows=1)
 
     credit_table.setStyle(
         TableStyle([
@@ -457,11 +338,7 @@ if uploaded_file:
 
     elements.append(credit_table)
 
-    pdf = SimpleDocTemplate(
-        pdf_buffer,
-        pagesize=landscape(letter)
-    )
-
+    pdf = SimpleDocTemplate(pdf_buffer, pagesize=landscape(letter))
     pdf.build(elements)
 
     pdf_buffer.seek(0)
@@ -473,8 +350,6 @@ if uploaded_file:
         mime="application/pdf"
     )
 
-
-    # ---------- DISPLAY TABLE ----------
     st.dataframe(
         result,
         height=650,
