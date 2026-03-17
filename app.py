@@ -80,7 +80,7 @@ target_percentage = st.radio(
 generate = st.button("Generate Report")
 
 
-# ---------- BUILD CREDIT MAP (FIXED FOR YOUR EXCEL) ----------
+# ---------- BUILD CREDIT MAP ----------
 def build_credit_map(target):
 
     column_map = {
@@ -319,15 +319,24 @@ if uploaded_file and generate:
     elements.append(attendance_table)
     elements.append(Spacer(1, 30))
 
-    credit_columns = ["Program", "Semester", "Subject", "Required Cumulative Attendance"]
 
-    credit_headers = [Paragraph(f"<b>{c}</b>", header_style) for c in credit_columns]
+    # ---------- CREDIT TABLE (ALL ORIGINAL COLUMNS RESTORED) ----------
+    credit_headers = [
+        Paragraph(f"<b>{c}</b>", header_style)
+        for c in relevant_credit_rows.columns
+    ]
+
     credit_data = [credit_headers]
 
     for _, row in relevant_credit_rows.iterrows():
-        credit_data.append([Paragraph(str(row[col]), wrap_style) for col in credit_columns])
+        credit_data.append(
+            [Paragraph(str(v), wrap_style) for v in row]
+        )
 
-    credit_table = Table(credit_data, repeatRows=1)
+    credit_table = Table(
+        credit_data,
+        repeatRows=1
+    )
 
     credit_table.setStyle(
         TableStyle([
