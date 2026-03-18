@@ -64,6 +64,7 @@ st.markdown(
 '### Upload your Detailed Attendance Report from <a href="https://sdc-sppap1.svkm.ac.in:50001/irj/portal" target="_blank">SAP</a>',
 unsafe_allow_html=True
 )
+<h6>From 2nd January</h6>
 
 uploaded_file = st.file_uploader("Upload File", type="pdf")
 
