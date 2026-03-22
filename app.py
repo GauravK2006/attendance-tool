@@ -56,7 +56,7 @@ st.info("""
 3. The tool calculates your attendance and displays **required lectures automatically**.
 4. You can download the generated calculation as a .pdf which includes required lectures for all your subjects.
 5. The uploaded attendance report is processed temporarily in memory and is not stored anywhere.
-6. As of now, this tool is only **restricted to BALLB Semester I to Semester IV** from the batches 2024-29 and 2025-30.
+6. As of now, this tool is only **restricted to Semester I to Semester IV** from the batches 2024-29 and 2025-30.
 """)
 
 
