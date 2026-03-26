@@ -21,7 +21,6 @@ st.set_page_config(
 # ---------- HEADER ----------
 st.markdown("""
 <h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
-<h1 style="color:red">Site is being refined for better experience, please check back later</h1>
 <h6>Unofficial</h6>
 <hr style="margin-top:0px; margin-bottom:10px;">
 """, unsafe_allow_html=True)
@@ -250,30 +249,30 @@ if uploaded_file and generate:
     combined_attended  = result.groupby("Base Subject")["Total Lectures Attended"].transform("sum")
     combined_missed    = combined_conducted - combined_attended
 
-    result["Current Cumulative Attendance"] = combined_attended
+    result["Current Cumulative Attendance (Lectures + Tutorials)"] = combined_attended
 
-    result["Attendance Percentage"] = (
+    result["Attendance Percentage (Lectures + Tutorials)"] = (
         combined_attended / combined_conducted * 100
     ).round(2)
 
-    result["Required Cumulative Attendance"] = (
+    result["Required Cumulative Attendance (Lectures + Tutorials)"] = (
         result["Base Subject"].apply(match_required)
     )
 
-    result["Required Cumulative Attendance"] = (
-        result["Required Cumulative Attendance"]
-        - result["Current Cumulative Attendance"]
+    result["Required Cumulative Attendance (Lectures + Tutorials)"] = (
+        result["Required Cumulative Attendance (Lectures + Tutorials)"]
+        - result["Current Cumulative Attendance (Lectures + Tutorials)"]
     ).clip(lower=0)
 
-    result["Required Cumulative Attendance"] = (
-        result["Required Cumulative Attendance"]
+    result["Required Cumulative Attendance (Lectures + Tutorials)"] = (
+        result["Required Cumulative Attendance (Lectures + Tutorials)"]
         .fillna(0)
         .astype(int)
         .astype(object)
     )
 
     # ---------- TOTAL MISSED (consolidated, show once) ----------
-    result["Total Missed"] = combined_missed.astype(int).astype(object)
+    result["Total Missed (Lectures + Tutorials)"] = combined_missed.astype(int).astype(object)
 
     # ---------- REMAINING LECTURES (per-row: T1 or U1 separately) ----------
     def calc_remaining(row):
@@ -308,11 +307,11 @@ if uploaded_file and generate:
         can_miss = remaining_overall - int(req_cumulative_remaining)
         return max(0, can_miss)
 
-    result["Lectures That Can Be Missed"] = result.apply(
+    result["Lectures That Can Be Missed (Lectures + Tutorials)"] = result.apply(
         lambda row: calc_can_miss(
             row["Base Subject"],
-            row["Current Cumulative Attendance"],
-            row["Required Cumulative Attendance"]
+            row["Current Cumulative Attendance (Lectures + Tutorials)"],
+            row["Required Cumulative Attendance (Lectures + Tutorials)"]
         ),
         axis=1
     )
@@ -323,11 +322,11 @@ if uploaded_file and generate:
 
     # Consolidated columns shown only on first row of each base subject group
     consolidated_cols = [
-        "Current Cumulative Attendance",
-        "Attendance Percentage",
-        "Required Cumulative Attendance",
-        "Total Missed",
-        "Lectures That Can Be Missed",
+        "Current Cumulative Attendance (Lectures + Tutorials)",
+        "Attendance Percentage (Lectures + Tutorials)",
+        "Required Cumulative Attendance (Lectures + Tutorials)",
+        "Total Missed (Lectures + Tutorials)",
+        "Lectures That Can Be Missed (Lectures + Tutorials)",
     ]
     for col in consolidated_cols:
         result.loc[duplicated, col] = ""
@@ -342,17 +341,17 @@ if uploaded_file and generate:
     mandatory_cols = [
         "Sr. No.",
         "Subject",
-        "Attendance Percentage",
-        "Required Cumulative Attendance",
+        "Attendance Percentage (Lectures + Tutorials)",
+        "Required Cumulative Attendance (Lectures + Tutorials)",
     ]
 
     # Optional columns — include if user selected
     optional_col_map = {
         "show_conducted":  "Total Lectures Conducted",
         "show_attended":   "Total Lectures Attended",
-        "show_missed":     "Total Missed",
+        "show_missed":     "Total Missed (Lectures + Tutorials)",
         "show_remaining":  "Remaining Lectures",
-        "show_can_miss":   "Lectures That Can Be Missed",
+        "show_can_miss":   "Lectures That Can Be Missed (Lectures + Tutorials)",
         "show_dates":      "Dates Missed",
     }
 
@@ -368,18 +367,18 @@ if uploaded_file and generate:
         "Subject",
         "Total Lectures Conducted",
         "Total Lectures Attended",
-        "Total Missed",
-        "Current Cumulative Attendance",
-        "Attendance Percentage",
-        "Required Cumulative Attendance",
+        "Total Missed (Lectures + Tutorials)",
+        "Current Cumulative Attendance (Lectures + Tutorials)",
+        "Attendance Percentage (Lectures + Tutorials)",
+        "Required Cumulative Attendance (Lectures + Tutorials)",
         "Remaining Lectures",
-        "Lectures That Can Be Missed",
+        "Lectures That Can Be Missed (Lectures + Tutorials)",
         "Dates Missed",
     ]
 
     display_cols = [
         c for c in full_column_order
-        if c in mandatory_cols or c in selected_optional or c == "Current Cumulative Attendance"
+        if c in mandatory_cols or c in selected_optional or c == "Current Cumulative Attendance (Lectures + Tutorials)"
     ]
 
     display_df = result[display_cols].copy()
@@ -426,17 +425,17 @@ if uploaded_file and generate:
 
     # Assign relative widths per column — will be normalised to page_width
     col_weight_map = {
-        "Sr. No.":                      0.04,
-        "Subject":                      0.20,
-        "Total Lectures Conducted":     0.08,
-        "Total Lectures Attended":      0.08,
-        "Total Missed":                 0.07,
-        "Current Cumulative Attendance":0.09,
-        "Attendance Percentage":        0.08,
-        "Required Cumulative Attendance":0.10,
-        "Remaining Lectures":           0.08,
-        "Lectures That Can Be Missed":  0.09,
-        "Dates Missed":                 0.19,
+        "Sr. No.":                                          0.04,
+        "Subject":                                          0.20,
+        "Total Lectures Conducted":                         0.08,
+        "Total Lectures Attended":                          0.08,
+        "Total Missed (Lectures + Tutorials)":              0.07,
+        "Current Cumulative Attendance (Lectures + Tutorials)": 0.09,
+        "Attendance Percentage (Lectures + Tutorials)":     0.08,
+        "Required Cumulative Attendance (Lectures + Tutorials)": 0.10,
+        "Remaining Lectures":                               0.08,
+        "Lectures That Can Be Missed (Lectures + Tutorials)": 0.09,
+        "Dates Missed":                                     0.19,
     }
 
     raw_weights = [col_weight_map.get(c, 0.08) for c in display_df.columns]
@@ -513,8 +512,8 @@ if uploaded_file and generate:
     column_config = {}
     if "Dates Missed" in display_df.columns:
         column_config["Dates Missed"] = st.column_config.TextColumn(width="large")
-    if "Attendance Percentage" in display_df.columns:
-        column_config["Attendance Percentage"] = st.column_config.NumberColumn(format="%.2f%%")
+    if "Attendance Percentage (Lectures + Tutorials)" in display_df.columns:
+        column_config["Attendance Percentage (Lectures + Tutorials)"] = st.column_config.NumberColumn(format="%.2f%%")
 
     st.dataframe(
         display_df,
