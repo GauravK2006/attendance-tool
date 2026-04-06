@@ -21,7 +21,6 @@ st.set_page_config(
 # ---------- HEADER ----------
 st.markdown("""
 <h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
-<h1 style="color:red">Site is being refined, please check back later</h1>
 <h6>Unofficial</h6>
 <hr style="margin-top:0px; margin-bottom:10px;">
 """, unsafe_allow_html=True)
@@ -223,6 +222,12 @@ if uploaded_file and generate:
         .astype(object)
     )
 
+    # FIX: newer pandas (2.x+ / Python 3.14 env) raises TypeError when assigning
+    # "" into a float/int column via .loc. Cast to object dtype first so the
+    # column can hold mixed numeric + empty-string values without error.
+    result["Current Cumulative Attendance"] = result["Current Cumulative Attendance"].astype(object)
+    result["Attendance Percentage"] = result["Attendance Percentage"].astype(object)
+
     duplicated = result.duplicated("Base Subject")
 
     result.loc[duplicated, "Current Cumulative Attendance"] = ""
@@ -278,7 +283,6 @@ if uploaded_file and generate:
         elements.append(Paragraph(report_duration, styles["Normal"]))
         elements.append(Spacer(1, 5))
 
-        # ✅ ADDED LINE
         elements.append(
             Paragraph(
                 f"This Report has been calculated based on {target_percentage}% chosen criteria.",
