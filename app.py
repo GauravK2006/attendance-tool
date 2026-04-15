@@ -21,7 +21,7 @@ st.set_page_config(
 # ---------- HEADER ----------
 st.markdown("""
 <h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
-<h3 style="color:yellow">As the last attendance report has been calculated by the university, this tool will shutdown and comeback with more features for the next semester. Stay tuned!</h3>
+<h4 style="color:yellow">As the last attendance report has been calculated by the university, this tool will shutdown and comeback with more features for the next semester. Stay tuned!</h4>
 <h6>Unofficial</h6>
 <hr style="margin-top:0px; margin-bottom:10px;">
 """, unsafe_allow_html=True)
