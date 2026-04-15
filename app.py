@@ -27,6 +27,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("Created by Gaurav Khopkar")
+# ---------- FOOTER ----------
+st.markdown("---")
+
+st.markdown("""
+<p style="font-size:0.85rem; color:gray;">
+This page is an independent student-created tool developed by <b>Gaurav Khopkar</b>.
+It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
+<br>
+<p style="font-size:0.85rem; color:gray;">
+For queries or suggestions or any defects on this page, contact: <b>gauravkhopkar2006@hotmail.com</b>
+
+<br>
+<p style="font-size:0.85rem; color:gray;">
+Thank you for using this tool.
+""", unsafe_allow_html=True)
+st.stop()
 
 
 # ---------- LOAD CREDIT STRUCTURE ----------
@@ -388,18 +404,4 @@ if uploaded_file and generate:
     )
 
 
-# ---------- FOOTER ----------
-st.markdown("---")
 
-st.markdown("""
-<p style="font-size:0.85rem; color:gray;">
-This page is an independent student-created tool developed by <b>Gaurav Khopkar</b>.
-It is not affiliated with NMIMS, KPMSOL, or the SAP portal.
-<br>
-<p style="font-size:0.85rem; color:gray;">
-For queries or suggestions or any defects on this page, contact: <b>gauravkhopkar2006@hotmail.com</b>
-
-<br>
-<p style="font-size:0.85rem; color:gray;">
-Thank you for using this tool.
-""", unsafe_allow_html=True)
