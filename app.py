@@ -13,14 +13,14 @@ from reportlab.lib import colors
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
-    page_title="KPMSOL Attendance Calculator",
+    page_title="Attendance Calculator",
     page_icon="📊",
     layout="wide"
 )
 
 # ---------- HEADER ----------
 st.markdown("""
-<h1 style="margin-bottom:5px;">KPMSOL Attendance Calculator</h1>
+<h1 style="margin-bottom:5px;">Attendance Calculator</h1>
 <h4 style="color:yellow">As the last attendance report has been calculated by the university, this tool will shutdown and comeback with more features for the next semester. Stay tuned!</h4>
 <h6>Unofficial</h6>
 <hr style="margin-top:0px; margin-bottom:10px;">
